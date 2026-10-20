@@ -30,7 +30,7 @@ class SourceSection extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
     child: Text(
-      source == ContentSource.jm ? 'JM' : 'PIC',
+      source.label,
       style: Theme.of(context).textTheme.titleMedium,
     ),
   );
