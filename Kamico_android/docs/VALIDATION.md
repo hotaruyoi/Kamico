@@ -1,6 +1,8 @@
 # 当前验证入口
 
-当前正式版 **1.0.0+27**，见 [RELEASE_1_0.md](RELEASE_1_0.md)。全量回归 `verification-1.0.0.log` 为 147 项通过、1 项可选预览跳过；专项及合成预览 `verification-1.0.0-ui.log` 为 20 项通过，静态检查 `verification-1.0.0-analyze.log` 无问题。布局缺陷修复前后记录为 `verification-1.0.0-before.log` / `verification-1.0.0-layout.log`。预览位于 `previews/1.0.0/`。本版设备与构建身份核验结果见本版记录，桌面回归不代表真机 FPS。
+当前正式版 **1.0.1+29**，见 [RELEASE_1_0_1.md](RELEASE_1_0_1.md)。`verification-1.0.1.log` 为 150 项通过、1 项可选预览跳过；`verification-1.0.1-refinement.log` 为新旧界面专项 15 项通过，静态检查 `verification-1.0.1-analyze.log` 无问题。真机窗口回归前后见 `reader-menu-1.0.1-before.json` / `reader-menu-1.0.1-after.json`。Profile 合成场景记录见 `performance-1.0.1-device.json`，本机查询基准单列在 `benchmark-1.0.1.log`，两者不互相替代。
+
+前版 **1.0.0+27**，见 [RELEASE_1_0.md](RELEASE_1_0.md)。全量回归 `verification-1.0.0.log` 为 147 项通过、1 项可选预览跳过；专项及合成预览 `verification-1.0.0-ui.log` 为 20 项通过，静态检查 `verification-1.0.0-analyze.log` 无问题。布局缺陷修复前后记录为 `verification-1.0.0-before.log` / `verification-1.0.0-layout.log`。预览位于 `previews/1.0.0/`。本版设备与构建身份核验结果见本版记录，桌面回归不代表真机 FPS。
 
 以下为已保留的历史基线：
 
@@ -14,7 +16,7 @@
 
 0.18.0 的界面改动及 91 项回归见 [原版记录](UI_0_18.md)与[原版日志](verification-0.18.log)。后续发现页滑动修复通过热重载与滚动字段对照验证后获用户确认，现已纳入 0.18.1；证据见 [修复记录](DISCOVERY_SCROLL_FIX.md)。
 
-- 当前 Release/Debug APK、源码快照、包外符号和构建日志位于 `releases/1.0.0/`；最近验收的 `releases/0.23.0/` 及必要历史基线继续保留在原目录。
+- 当前 Release/Debug APK、源码快照、包外符号和构建日志位于 `releases/1.0.1/`；前版 `releases/1.0.0/`、最近验收的 `releases/0.23.0/` 及必要历史基线继续保留。
 - 用户已确认 0.17.0 Release 的掉帧问题解决；0.15.0 及性能问题基线 0.16.0 继续保留作历史对照。更早的交付副本和截图已移除。
 - 清理前 0.17.0 的 88 项回归与构建结果见 [性能记录](PERFORMANCE_0_17.md)；清理删除了仅验证已退役网页注册模块的两项测试，保留购买、登录、外站注册和其他有效回归。
 - 清理后的静态检查、测试和离线增量编译结果见 [清理报告](CLEANUP_REPORT.md)。本轮不执行 pub get、升级依赖、flutter clean 或缓存删除。

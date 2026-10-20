@@ -10,7 +10,8 @@ version = sys.argv[1]
 with zipfile.ZipFile(root / 'releases' / version / 'source.zip') as archive:
     names = {name.removeprefix('./'): name for name in archive.namelist()}
     files = {}
-    for directory in ['lib', 'test', 'tool']:
+    for directory in ['lib', 'test', 'tool', 'artwork', 'android/app/src/main/res',
+                      'android/app/src/main/kotlin']:
         for path in (root / directory).rglob('*'):
             if not path.is_file():
                 continue
@@ -22,7 +23,7 @@ with zipfile.ZipFile(root / 'releases' / version / 'source.zip') as archive:
             if current != saved:
                 raise SystemExit(f'Archive differs: {relative}')
             files[relative] = hashlib.sha256(current).hexdigest()
-    for relative in ['pubspec.yaml', 'pubspec.lock', 'android/local.properties',
+    for relative in ['pubspec.yaml', 'pubspec.lock',
                      'android/app/src/main/kotlin/app/jmpic/jm_mobile/PdfDownloads.kt']:
         current = (root / relative).read_bytes()
         if current != archive.read(names[relative]):

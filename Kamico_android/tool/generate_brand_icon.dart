@@ -1,37 +1,45 @@
 import 'dart:io';
 import 'package:image/image.dart' as img;
 
-void main() {
-  // Same K outline as the adaptive vector. Supersampled for legacy launchers.
-  const polygon = [
-    (32, 28),
-    (42, 28),
-    (42, 51),
-    (62, 28),
-    (75, 28),
-    (52, 54),
-    (76, 80),
-    (62, 80),
-    (42, 58),
-    (42, 80),
-    (32, 80),
-  ];
-  final image = img.Image(width: 864, height: 864);
-  img.fill(image, color: img.ColorRgb8(255, 255, 255));
-  for (var y = 0; y < image.height; y++) {
-    for (var x = 0; x < image.width; x++) {
-      final px = (x + .5) / 8, py = (y + .5) / 8;
-      var inside = false;
-      for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        final a = polygon[i], b = polygon[j];
-        if ((a.$2 > py) != (b.$2 > py) &&
-            px < (b.$1 - a.$1) * (py - a.$2) / (b.$2 - a.$2) + a.$1) {
-          inside = !inside;
-        }
-      }
-      if (inside) image.setPixelRgb(x, y, 233, 91, 145);
-    }
+// Run from the client root. An optional input replaces the compact source master.
+void main(List<String> args) {
+  final sourceFile = File(
+    args.isEmpty ? 'artwork/launcher-foreground.png' : args.single,
+  );
+  final decoded = img.decodePng(sourceFile.readAsBytesSync());
+  if (decoded == null) throw const FormatException('Invalid launcher PNG');
+  final master = img.copyResize(
+    decoded,
+    width: 512,
+    height: 512,
+    interpolation: img.Interpolation.average,
+  );
+  void save(String path, img.Image image) {
+    final file = File(path)..parent.createSync(recursive: true);
+    file.writeAsBytesSync(img.encodePng(image, level: 9));
   }
+
+  img.Image canvas(int size, {required bool adaptive}) {
+    final image = img.Image(width: size, height: size, numChannels: 4);
+    if (!adaptive) img.fill(image, color: img.ColorRgba8(255, 255, 255, 255));
+    // Android's foreground is 108dp; keep the artwork inside its 66dp safe area.
+    final side = (size * (adaptive ? 66 / 108 : .94)).round();
+    final artwork = img.copyResize(
+      master,
+      width: side,
+      height: side,
+      interpolation: img.Interpolation.average,
+    );
+    img.compositeImage(
+      image,
+      artwork,
+      dstX: (size - side) ~/ 2,
+      dstY: (size - side) ~/ 2,
+    );
+    return image;
+  }
+
+  save('artwork/launcher-foreground.png', master);
   for (final entry in {
     'mdpi': 48,
     'hdpi': 72,
@@ -39,28 +47,25 @@ void main() {
     'xxhdpi': 144,
     'xxxhdpi': 192,
   }.entries) {
-    File(
+    save(
       'android/app/src/main/res/mipmap-${entry.key}/ic_launcher.png',
-    ).writeAsBytesSync(
-      img.encodePng(
-        img.copyResize(
-          image,
-          width: entry.value,
-          height: entry.value,
-          interpolation: img.Interpolation.average,
-        ),
-      ),
+      canvas(entry.value, adaptive: false),
     );
   }
-  Directory('docs/previews/0.16.0').createSync(recursive: true);
-  File('docs/previews/0.16.0/kamico-icon.png').writeAsBytesSync(
-    img.encodePng(
-      img.copyResize(
-        image,
-        width: 432,
-        height: 432,
-        interpolation: img.Interpolation.average,
-      ),
-    ),
+  final foreground = canvas(432, adaptive: true);
+  save(
+    'android/app/src/main/res/drawable-nodpi/kamico_launcher_foreground.png',
+    foreground,
   );
+  File('windows/runner/resources/app_icon.ico').writeAsBytesSync(
+    img.IcoEncoder().encodeImages([
+      for (final size in [16, 32, 48, 64, 128, 256])
+        canvas(size, adaptive: false),
+    ]),
+  );
+  final preview = img.Image(width: 432, height: 432, numChannels: 4);
+  img.fill(preview, color: img.ColorRgba8(255, 255, 255, 255));
+  img.compositeImage(preview, foreground);
+  save('docs/previews/1.0.1/launcher-adaptive.png', preview);
+  save('docs/previews/1.0.1/launcher-legacy.png', canvas(192, adaptive: false));
 }

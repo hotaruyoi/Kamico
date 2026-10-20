@@ -1,6 +1,6 @@
 # Kamico
 
-- [客户端说明](Kamico_android/README.md)：JM / PicACG 双源漫画客户端，当前正式版 1.0。
+- [客户端说明](Kamico_android/README.md)：JM / PicACG 双源漫画客户端，当前正式版 1.0.1。
 - [任务交接文档](Kamico_android/docs/WORK_HANDOFF.md)：当前状态、既有行为和交付说明。
 - [协作规则](AGENTS.md)：长期约束及每条规则的保留理由。
 - [未完成事项](Kamico_android/docs/NEXT_ITERATION.md)：当前完成状态及明确延期范围。

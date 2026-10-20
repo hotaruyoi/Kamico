@@ -37,6 +37,6 @@ foreach ($buildMode in $buildModes) {
     Copy-Item -LiteralPath "build/app/outputs/flutter-apk/app-$buildMode.apk" -Destination $artifact
     $artifacts += $artifact
 }
-& tar -a -cf (Join-Path $artifactDirectory 'source.zip') --exclude=android/.gradle --exclude=android/.kotlin --exclude=android/app/.cxx --exclude=android/app/build --exclude=tool/baseline15 lib test tool docs assets android windows pubspec.yaml pubspec.lock README.md LICENSE THIRD_PARTY_NOTICES.md third_party
+& tar -a -cf (Join-Path $artifactDirectory 'source.zip') --exclude=android/.gradle --exclude=android/.kotlin --exclude=android/app/.cxx --exclude=android/app/build --exclude=android/local.properties --exclude=android/key.properties --exclude=*.jks --exclude=*.keystore --exclude=tool/baseline15 --exclude=tool/__pycache__ lib test tool docs assets artwork android windows pubspec.yaml pubspec.lock README.md LICENSE THIRD_PARTY_NOTICES.md third_party
 if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
 Get-FileHash -LiteralPath $artifacts -Algorithm SHA256

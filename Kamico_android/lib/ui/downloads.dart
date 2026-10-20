@@ -577,12 +577,15 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     label: AppText(_descending ? '标题降序' : '标题升序'),
                     onPressed: () => setState(() => _descending = !_descending),
                   ),
-                  if (!_selecting)
-                    TextButton.icon(
-                      onPressed: () => setState(() => _selecting = true),
-                      icon: const Icon(Icons.checklist),
-                      label: const AppText('选择'),
-                    ),
+                  LibrarySelectionToggle(
+                    selected: _selecting,
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                            _selecting = !_selecting;
+                            _selected.clear();
+                          }),
+                  ),
                 ] else ...[
                   ActionChip(
                     avatar: const Icon(Icons.filter_list, size: 18),

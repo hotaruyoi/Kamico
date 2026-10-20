@@ -138,6 +138,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         ],
         _ => [],
       });
+      await PlatformFiles.readerSystemBars(_chrome);
     } catch (_) {
       if (mounted) {
         widget.session.logs.record('READER', 'environment_unavailable');
@@ -148,9 +149,11 @@ class _ReaderScreenState extends State<ReaderScreen>
   void _toggleChrome() {
     setState(() => _chrome = !_chrome);
     unawaited(
-      SystemChrome.setEnabledSystemUIMode(
-        _chrome ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky,
-      ),
+      PlatformFiles.readerSystemBars(_chrome).catchError((Object _) {
+        if (mounted) {
+          widget.session.logs.record('READER', 'system_ui_unavailable');
+        }
+      }),
     );
   }
 
@@ -508,7 +511,7 @@ class _ReaderScreenState extends State<ReaderScreen>
     _pages?.dispose();
     unawaited(PlatformFiles.keepAwake(false).catchError((Object _) {}));
     unawaited(SystemChrome.setPreferredOrientations([]));
-    unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
+    unawaited(PlatformFiles.readerSystemBars(true).catchError((Object _) {}));
     super.dispose();
   }
 

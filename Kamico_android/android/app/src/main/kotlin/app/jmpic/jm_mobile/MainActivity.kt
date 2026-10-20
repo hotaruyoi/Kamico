@@ -6,7 +6,11 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.view.WindowManager
 import android.os.StatFs
+import android.os.Build
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -21,6 +25,14 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        // The default cutout policy letterboxes the surface when bars are hidden.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                else WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
         documents = DocumentBridge(this)
         pdfDownloads = PdfDownloads(this)
         fonts = SystemFontBridge(this)
@@ -38,6 +50,16 @@ class MainActivity : FlutterActivity() {
                     "keepAwake" -> {
                         if (call.argument<Boolean>("enabled") == true) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        result.success(null)
+                    }
+                    "readerSystemBars" -> {
+                        // Keep the Flutter surface fixed while the bars overlay it.
+                        WindowCompat.setDecorFitsSystemWindows(window, false)
+                        val controller = WindowCompat.getInsetsController(window, window.decorView)
+                        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                        val bars = WindowInsetsCompat.Type.systemBars()
+                        if (call.argument<Boolean>("visible") == true) controller.show(bars)
+                        else controller.hide(bars)
                         result.success(null)
                     }
                     "storageInfo" -> {

@@ -621,7 +621,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: AppText([appName, '书架', '阅读历史', '离线下载', '我的'][_tab]),
+        title: _tab == 0
+            ? Text(
+                'Kamico · ${session.activeSource.label}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              )
+            : AppText([appName, '书架', '阅读历史', '离线下载', '我的'][_tab]),
         actions: [
           if (_tab == 0 || _tab == 4)
             Padding(

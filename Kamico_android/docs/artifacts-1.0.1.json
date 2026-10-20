@@ -1,0 +1,26 @@
+[
+  {
+    "mode": "release",
+    "bytes": 21283406,
+    "sha256": "5EEF53C4AFDA2A938C54EBF8488BE5DF371F95517746FB09FA9F0B0E420360A8",
+    "package": "package: name='app.jmpic.jm_mobile' versionCode='29' versionName='1.0.1' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
+    "label": "application-label:'kamico'",
+    "debuggable": false,
+    "nativeCode": "native-code: 'arm64-v8a'",
+    "minSdk": "minSdkVersion:'24'",
+    "targetSdk": "targetSdkVersion:'36'",
+    "signer": "Signer #1 certificate SHA-256 digest: c9c2e03d943cfa9a1f4ea7f2386075789db7ebb9ae360b035d337594cdcf78b2"
+  },
+  {
+    "mode": "debug",
+    "bytes": 92650517,
+    "sha256": "D68AFD474B8CBDB194408764A00EE95844E7A2421250E59A80590730C8E5069F",
+    "package": "package: name='app.jmpic.jm_mobile.debug' versionCode='29' versionName='1.0.1' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
+    "label": "application-label:'kamico Debug'",
+    "debuggable": true,
+    "nativeCode": "native-code: 'arm64-v8a'",
+    "minSdk": "minSdkVersion:'24'",
+    "targetSdk": "targetSdkVersion:'36'",
+    "signer": "Signer #1 certificate SHA-256 digest: c9c2e03d943cfa9a1f4ea7f2386075789db7ebb9ae360b035d337594cdcf78b2"
+  }
+]

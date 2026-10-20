@@ -52,6 +52,18 @@ class PlatformFiles {
     }
   }
 
+  static Future<void> readerSystemBars(bool visible) async {
+    try {
+      await channel.invokeMethod<void>('readerSystemBars', {
+        'visible': visible,
+      });
+    } on MissingPluginException {
+      await SystemChrome.setEnabledSystemUIMode(
+        visible ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky,
+      );
+    }
+  }
+
   static Future<Map<String, dynamic>?> storageInfo() async {
     try {
       return await channel.invokeMapMethod<String, dynamic>('storageInfo');
