@@ -12,15 +12,16 @@ $flutterExecutable = (Get-Command flutter -ErrorAction Stop).Source
 $symbols = Join-Path $projectDirectory "releases/$version/distribution-symbols"
 $targets = @(
     @{ Name='arm64-v8a'; Platform='android-arm64' },
-    @{ Name='armeabi-v7a'; Platform='android-arm' },
     @{ Name='x86_64'; Platform='android-x64' },
     @{ Name='universal'; Platform='android-arm,android-arm64,android-x64' }
 )
+$artifacts = @()
 foreach ($target in $targets) {
     $destination = Join-Path $outputDirectory "Kamico-$version-android-$($target.Name).apk"
     $acceptedArm64 = Join-Path $projectDirectory "releases/$version/app-arm64-release.apk"
     if ($ReuseAcceptedArm64 -and $target.Name -eq 'arm64-v8a' -and (Test-Path -LiteralPath $acceptedArm64)) {
         Copy-Item -LiteralPath $acceptedArm64 -Destination $destination
+        $artifacts += $destination
         Write-Output "Reused accepted ARM64 APK: $destination"
         continue
     }
@@ -29,9 +30,7 @@ foreach ($target in $targets) {
     & $flutterExecutable @arguments *> (Join-Path $logDirectory "build-$($target.Name).log")
     if ($LASTEXITCODE -ne 0) { Get-Content (Join-Path $logDirectory "build-$($target.Name).log") -Tail 45; throw "APK build failed: $($target.Name)" }
     Copy-Item -LiteralPath 'build/app/outputs/flutter-apk/app-release.apk' -Destination $destination
+    $artifacts += $destination
     Write-Output "Built: $destination"
 }
-& $flutterExecutable build appbundle --release --no-pub --target-platform=android-arm,android-arm64,android-x64 "--split-debug-info=$symbols" *> (Join-Path $logDirectory 'build-appbundle.log')
-if ($LASTEXITCODE -ne 0) { Get-Content (Join-Path $logDirectory 'build-appbundle.log') -Tail 45; throw 'App Bundle build failed' }
-Copy-Item -LiteralPath 'build/app/outputs/bundle/release/app-release.aab' -Destination (Join-Path $outputDirectory "Kamico-$version-android.aab")
-Get-ChildItem -LiteralPath $outputDirectory -File | Where-Object Extension -in '.apk','.aab' | Get-FileHash -Algorithm SHA256
+Get-FileHash -LiteralPath $artifacts -Algorithm SHA256

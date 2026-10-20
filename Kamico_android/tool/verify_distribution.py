@@ -11,7 +11,6 @@ import zipfile
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--sdk', default=os.environ.get('ANDROID_HOME'), required=not os.environ.get('ANDROID_HOME'))
-parser.add_argument('--jdk', default=os.environ.get('JAVA_HOME'), required=not os.environ.get('JAVA_HOME'))
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 version, build = re.search(r'^version:\s*(\d+\.\d+\.\d+)\+(\d+)',
@@ -43,7 +42,7 @@ def check_native(path, prefix, abis):
 
 
 records = []
-for architecture in [*machines, 'universal']:
+for architecture in ['arm64-v8a', 'x86_64', 'universal']:
     path = folder / f'Kamico-{version}-android-{architecture}.apk'
     badging = run(tools / 'aapt2.exe', 'dump', 'badging', path)
     assert f"name='app.jmpic.jm_mobile' versionCode='{build}' versionName='{version}'" in badging
@@ -61,18 +60,6 @@ for architecture in [*machines, 'universal']:
                     'certificateSha256': signer,
                     'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
 
-bundle = folder / f'Kamico-{version}-android.aab'
-check_native(bundle, 'base/lib', set(machines))
-verification = run(Path(args.jdk) / 'bin/jarsigner.exe', '-J-Duser.language=en',
-                   '-J-Duser.country=US', '-verify', bundle)
-assert 'jar verified.' in verification
-certificate = run(Path(args.jdk) / 'bin/keytool.exe', '-J-Duser.language=en',
-                  '-J-Duser.country=US', '-printcert', '-jarfile', bundle)
-signer = re.search(r'SHA256:\s*([\dA-F:]+)', certificate).group(1).replace(':', '').lower()
-assert signer == expected_signer
-records.append({'file': bundle.name, 'bytes': bundle.stat().st_size,
-                'abis': sorted(machines), 'certificateSha256': signer,
-                'sha256': hashlib.sha256(bundle.read_bytes()).hexdigest()})
-(folder / 'artifacts.json').write_text(json.dumps(records, indent=2) + '\n', encoding='utf-8')
+(folder.parent / 'apk-verification.json').write_text(json.dumps(records, indent=2) + '\n', encoding='utf-8')
 for item in records:
     print(item['file'], item['bytes'], ','.join(item['abis']), 'verified')

@@ -261,7 +261,7 @@ void main() {
       ]);
       expect(
         tester.getTopLeft(find.text('JM')).dy,
-        lessThan(tester.getTopLeft(find.text('PIC')).dy),
+        lessThan(tester.getTopLeft(find.text('Pic')).dy),
       );
       await capture(tester, key, 'history-local');
       await tester.tap(find.text('选择'));

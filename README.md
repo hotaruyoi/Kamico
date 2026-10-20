@@ -1,91 +1,78 @@
 <div align="center">
   <img src="Kamico_android/artwork/launcher-foreground.png" width="120" alt="Kamico 图标" />
   <h1>Kamico</h1>
-  <p>基于 Flutter 的 JM / PicACG 双源 Android 漫画客户端</p>
+  <p>发现、收藏、阅读与离线下载，一处完成</p>
   <p><a href="https://github.com/hotaruyoi/Kamico/releases/latest">下载发行版</a> · <a href="https://github.com/hotaruyoi/Kamico/issues">反馈问题</a></p>
 </div>
 
-Kamico 将发现、搜索、书架、历史、阅读与离线下载整合到统一的 Material 3 界面中。当前版本为 **1.0.1**，支持 Android 7.0 及以上系统。
+Kamico 是一款支持 **JMComic / PicACG 双源**的 Android 漫画客户端。统一的操作方式、按来源整理的书架，以及可按习惯调整的阅读器，让找书、继续阅读和离线查看衔接在一起。
 
-## 功能
+当前版本 **1.0.1**，支持 **Android 7.0 及以上**系统。
 
-- **双源切换**：在发现页或“我的”右上角点击切换 JM / PicACG，两个账号独立登录，搜索记录与筛选条件按来源保存。
-- **发现与搜索**：首页推荐、分类、排行、排序筛选和分页；入口按数据源能力显示，支持拖动调整发现页快捷入口顺序。
-- **书架与历史**：本地收藏、阅读进度和离线内容按 JM / PIC 分组；保留云端收藏与来源支持的云端历史。
-- **阅读体验**：竖向连续阅读、向左或向右翻页，支持缩放、进度恢复、跳页、自动阅读和预加载。
-- **离线下载**：章节下载、队列暂停与恢复、本地目录导入、离线阅读及 PDF 导出。
-- **外观设置**：系统 / 浅色 / 深色主题、主题色、字体与字号、响应式卡片布局，提供简体中文、繁体中文和英文。
+## 功能与使用体验
+
+### 两个来源，一套操作习惯
+
+在发现页或“我的”右上角点击即可切换来源，标题会标明当前来源。两个账号独立登录，搜索记录与筛选条件分别保存；切换后仍使用相同的发现、详情、书架与阅读操作。
+
+本地收藏、历史与下载在同一个入口中按来源分组。打开其他来源的作品时，应用自动使用作品对应的来源，返回后保留原先选择的全局来源。
+
+### 从发现到阅读
+
+通过首页推荐、分类、排行和搜索寻找作品，用排序、时间范围与分页缩小结果。发现页快捷入口支持拖动排序，常用入口可以放在前面。
+
+详情页集中展示封面、作者、简介、标签、点赞数与章节目录。简介和目录按需展开，章节支持搜索及不同排列方式，也可以直接选章下载。
+
+### 按自己的习惯阅读
+
+- **竖向连续阅读**：向上滑动接着阅读，适合连贯浏览整章内容。
+- **左右翻页**：可选择向左或向右滑动进入下一页，适应不同翻阅习惯。
+- **随时调整进度**：支持跳页、缩放与进度恢复，也可开启自动阅读和预加载。
+- **菜单覆盖显示**：点击画面中央呼出或收起工具栏，保持漫画画面与当前位置稳定。
+
+阅读设置在两个来源间共用。回到历史或书架后，可以继续上次未读完的位置。
+
+### 书架与历史，方便整理和继续阅读
+
+本地收藏支持分组、筛选与批量操作；历史记录保留阅读位置，便于找回最近看过的作品。JMComic 与 PicACG 条目分区显示，两个来源的内容都有明确归属。
+
+云端收藏与云端历史按来源支持的能力提供；PicACG 当前没有已接入的云端历史接口，本地历史仍可使用。
+
+### 下载后离线查看，也能导出 PDF
+
+可以选择章节或按编号批量加入下载队列，支持暂停、继续、取消和失败重试。切换来源不会暂停原来源的队列；应用重新打开后可恢复未完成的任务。
+
+下载内容集中在本地书库中，支持搜索、排序、离线阅读及批量管理，也可导入已有的本地目录。PDF 导出到系统下载目录，便于使用其他阅读器查看；清理应用内缓存不会删除已导出的公共 PDF。
+
+### 外观随设备与偏好调整
+
+采用 Material 3 界面，提供跟随系统、浅色和深色主题，以及主题色、字体、字号与卡片密度设置。支持简体中文、繁体中文和英文，可根据屏幕大小调整内容布局。
 
 ## 下载与安装
 
-前往 [Releases](https://github.com/hotaruyoi/Kamico/releases) 下载。版本页中的文件按以下规则命名：
+前往 [Releases](https://github.com/hotaruyoi/Kamico/releases) 下载适合设备的 APK。后续发行仅提供以下三个版本：
 
-| 文件后缀 | 用途 |
+| 版本 | 适用情况 |
 | --- | --- |
-| `android-arm64-v8a.apk` | 大多数现代 Android 手机，优先选择 |
-| `android-armeabi-v7a.apk` | 仍支持 32 位应用的旧 ARM 设备 |
-| `android-x86_64.apk` | AMD64 / Intel 64 位 Android 设备与模拟器 |
-| `android-universal.apk` | 包含以上三种架构，体积较大；不确定架构时使用 |
-| `android.aab` | Android App Bundle，供分发平台处理，不能直接点击安装 |
-| `source.zip` | 对应源码快照 |
-| `SHA256SUMS.txt` | 文件完整性校验值 |
+| **ARM64** · `android-arm64-v8a.apk` | 大多数现代 Android 手机，优先选择 |
+| **x86_64** · `android-x86_64.apk` | AMD64 / Intel 64 位 Android 设备与模拟器 |
+| **Universal** · `android-universal.apk` | 覆盖常用 Android 架构；不确定设备架构时选择，体积较大 |
 
-选择一种 APK 安装即可。首次安装时按系统提示允许当前下载工具安装应用；后续使用相同签名的 APK 覆盖升级。`x86_64` APK 运行于 Android，并非 Windows、Linux 或 macOS 桌面程序。
+安装其中一个即可。首次安装按 Android 系统提示允许安装应用，后续可用相同签名的安装包覆盖升级。
 
-## 使用说明
+## 开始使用
 
-1. 选择数据源后登录对应账号；切源保留另一个账号的登录状态。
-2. 本地收藏、历史和下载按来源分组，从本地库打开作品时自动使用作品自身的数据源。
-3. 新增 PDF 默认保存在系统 `Downloads/kamico/JM/` 或 `Downloads/kamico/PIC/` 下；删除应用内缓存不会删除已导出的公共 PDF。
-4. 下载期间需保持应用在前台；中断任务可在下次打开应用后恢复。
+1. 在发现页选择来源，按需登录对应账号。
+2. 浏览分类或搜索作品，在详情中选择章节开始阅读。
+3. 将喜欢的作品加入书架，通过历史记录继续阅读。
+4. 需要离线查看时选择章节下载；下载期间建议保持应用在前台。
 
-不同来源的能力有所区别，例如 PicACG 当前没有已接入的云端历史接口。上游服务的网络状态、登录要求及内容可用性由相应服务决定。
+导出的 PDF 默认位于 `Downloads/kamico/JM/` 或 `Downloads/kamico/PIC/`，也可以自行选择保存目录。不同来源的可用功能及网络连接情况以相应服务为准。
 
-## 从源码构建
+## 开源与反馈
 
-客户端位于 [`Kamico_android/`](Kamico_android/)。当前工程使用 Flutter 3.44.8 / Dart 3.12.2，Android SDK 36 和 JDK 21；依赖版本由 `pubspec.lock` 固定。
-
-在新环境完成 Flutter / Android 工具链配置后执行：
-
-```sh
-cd Kamico_android
-flutter pub get
-flutter analyze
-flutter test
-```
-
-已有依赖缓存时可使用 `--no-pub`，无需清理缓存或升级依赖。构建示例：
-
-```sh
-# ARM64 APK
-flutter build apk --release --no-pub --target-platform=android-arm64 -PjmAbi=arm64-v8a -Pdisable-abi-filtering=true
-
-# ARMv7、ARM64、x86_64 通用 APK
-flutter build apk --release --no-pub --target-platform=android-arm,android-arm64,android-x64 -Pdisable-abi-filtering=true
-
-# Android App Bundle
-flutter build appbundle --release --no-pub --target-platform=android-arm,android-arm64,android-x64
-```
-
-Windows 可使用 [`build_distribution.ps1`](Kamico_android/tool/build_distribution.ps1) 批量准备发行文件。当前 Android 工程沿用既有开发签名；自行分发时请使用自己的签名配置并妥善保管密钥。仓库保留 Windows runner，当前发行目标为 Android。
-
-## 目录
-
-```text
-Kamico_android/
-  lib/domain/     模型与来源标识
-  lib/data/       API、存储、图片和下载
-  lib/ui/         界面与阅读器
-  android/        Android 原生桥接与打包配置
-  assets/        本地化资源
-  artwork/       图标源资源
-  test/          自动化回归
-  tool/          构建及验证工具
-  third_party/   第三方许可
-```
+客户端源码位于 [`Kamico_android/`](Kamico_android/)。遇到问题或有改进建议，欢迎在 [Issues](https://github.com/hotaruyoi/Kamico/issues) 中反馈，附上应用版本、设备系统及复现步骤有助于定位。
 
 ## 许可与致谢
 
-本项目按 [GNU LGPL v3](Kamico_android/LICENSE) 分发，并保留其引用的 [GNU GPL v3 正文](Kamico_android/third_party/GPL-3.0.txt)。JM 与 PicACG 协议适配参考了 [tonquer/JMComic-qt](https://github.com/tonquer/JMComic-qt)、[tonquer/picacg-qt](https://github.com/tonquer/picacg-qt)，部分协议实现参考 [hect0x7/JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python)。
-
-完整来源、修改说明与第三方许可见 [THIRD_PARTY_NOTICES.md](Kamico_android/THIRD_PARTY_NOTICES.md)。发行包不包含 Python / Qt 运行时。
+本项目按 [GNU LGPL v3](Kamico_android/LICENSE) 分发。感谢 [JMComic-qt](https://github.com/tonquer/JMComic-qt)、[picacg-qt](https://github.com/tonquer/picacg-qt) 和 [JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python) 提供的参考，完整来源与许可见 [第三方声明](Kamico_android/THIRD_PARTY_NOTICES.md)。
