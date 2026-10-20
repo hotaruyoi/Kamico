@@ -305,324 +305,309 @@ class _BookcaseScreenState extends State<BookcaseScreen> {
     final rows = _local
         ? sourceSections(items, (c) => c.source)
         : [for (final comic in items) (source: comic.source, item: comic)];
-    return Column(
-      children: [
-        Expanded(
-          child: LibraryScrollView(
-            storageKey: 'bookcase:${session.source.id}',
-            controller: _scroll,
-            onRefresh: () => _reload(page: _page),
-            header: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    return LibrarySelectionLayout(
+      bodyBuilder: (bottomInset) => LibraryScrollView(
+        bottomInset: bottomInset,
+        storageKey: 'bookcase:${session.source.id}',
+        controller: _scroll,
+        onRefresh: () => _reload(page: _page),
+        header: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AppText(
-                            _local ? '设备内收藏' : '云端收藏',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          AppText(
-                            !_local && session.isPic
-                                ? '$_total 本'
-                                : '$_total 本 · ${_folders[_folder] ?? '默认收藏夹'}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppText(
+                        _local ? '设备内收藏' : '云端收藏',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      AppText(
+                        !_local && session.isPic
+                            ? '$_total 本'
+                            : '$_total 本 · ${_folders[_folder] ?? '默认收藏夹'}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                if (_local || !session.isPic)
+                  IconButton(
+                    tooltip: AppTranslations.text(context, '新建收藏夹'),
+                    onPressed: _busy || needsLogin ? null : _newFolder,
+                    icon: const Icon(Icons.create_new_folder_outlined),
+                  ),
+                AppActionMenu(
+                  actions: [
+                    AppMenuAction(
+                      '最近阅读',
+                      Icons.history,
+                      () => _open(HistoryScreen(session: session), '最近阅读'),
+                    ),
+                    AppMenuAction(
+                      '离线文件',
+                      Icons.offline_pin_outlined,
+                      () => _open(
+                        DownloadScreen(session: session, initialLibrary: true),
+                        '离线文件',
                       ),
                     ),
-                    if (_local || !session.isPic)
-                      IconButton(
-                        tooltip: AppTranslations.text(context, '新建收藏夹'),
-                        onPressed: _busy || needsLogin ? null : _newFolder,
-                        icon: const Icon(Icons.create_new_folder_outlined),
-                      ),
-                    AppActionMenu(
-                      actions: [
-                        AppMenuAction(
-                          '最近阅读',
-                          Icons.history,
-                          () => _open(HistoryScreen(session: session), '最近阅读'),
-                        ),
-                        AppMenuAction(
-                          '离线文件',
-                          Icons.offline_pin_outlined,
-                          () => _open(
-                            DownloadScreen(
-                              session: session,
-                              initialLibrary: true,
+                    AppMenuAction(
+                      '收藏说明',
+                      Icons.info_outline,
+                      () => showDialog<void>(
+                        context: context,
+                        animationStyle: AppMotion.sheet(context),
+                        builder: (context) => AlertDialog(
+                          title: const AppText('收藏说明'),
+                          content: AppText(
+                            _local ? '设备内书签，不包含图片，也不自动同步' : '云端收藏，与设备内书签分别管理',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const AppText('关闭'),
                             ),
-                            '离线文件',
-                          ),
-                        ),
-                        AppMenuAction(
-                          '收藏说明',
-                          Icons.info_outline,
-                          () => showDialog<void>(
-                            context: context,
-                            animationStyle: AppMotion.sheet(context),
-                            builder: (context) => AlertDialog(
-                              title: const AppText('收藏说明'),
-                              content: AppText(
-                                _local
-                                    ? '设备内书签，不包含图片，也不自动同步'
-                                    : '云端收藏，与设备内书签分别管理',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const AppText('关闭'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                AppSourceSwitch(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  cloud: !_local,
-                  onChanged: _busy
-                      ? null
-                      : (cloud) {
-                          setState(() {
-                            _local = !cloud;
-                            _folder = '0';
-                            _selected.clear();
-                            _selecting = false;
-                          });
-                          _reload();
-                        },
-                ),
-                SearchBar(
-                  controller: _search,
-                  hintText: AppTranslations.text(context, '筛选当前列表'),
-                  leading: const Icon(Icons.search),
-                  trailing: [
-                    if (_query.isNotEmpty)
-                      IconButton(
-                        tooltip: AppTranslations.text(context, '清空搜索'),
-                        onPressed: () => setState(() {
-                          _query = '';
-                          _search.clear();
-                          _selected.clear();
-                        }),
-                        icon: const Icon(Icons.clear),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() {
-                    _query = value;
-                    _selected.clear();
-                  }),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (_local || !session.isPic)
-                      ActionChip(
-                        avatar: const Icon(Icons.folder_outlined, size: 18),
-                        label: AppText(_folders[_folder] ?? '默认收藏夹'),
-                        onPressed: _busy || needsLogin ? null : _folderSheet,
-                      ),
-                    if (!_local)
-                      ActionChip(
-                        avatar: const Icon(Icons.sort, size: 18),
-                        label: AppText(
-                          session.isPic
-                              ? (_sort == 'mr' ? '最新收藏' : '最早收藏')
-                              : (_sort == 'mr' ? '收藏时间' : '更新时间'),
-                        ),
-                        onPressed: _busy || needsLogin
-                            ? null
-                            : () {
-                                _sort = _sort == 'mr'
-                                    ? (session.isPic ? 'da' : 'mp')
-                                    : 'mr';
-                                _reload();
-                              },
-                      ),
-                    if (!_selecting)
-                      TextButton.icon(
-                        onPressed: needsLogin
-                            ? null
-                            : () => setState(() => _selecting = true),
-                        icon: const Icon(Icons.checklist),
-                        label: const AppText('选择'),
-                      ),
-                  ],
-                ),
-                if (_busy)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: LinearProgressIndicator(),
-                  ),
-              ],
-            ),
-            slivers: [
-              if (needsLogin)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: AppStatus(
-                    icon: Icons.cloud_outlined,
-                    title: '云端收藏',
-                    message: '登录后同步收藏和观看历史',
-                    action: FilledButton.icon(
-                      onPressed: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (_) => LoginScreen(session: session),
-                          ),
-                        );
-                        if (mounted) _reload();
-                      },
-                      icon: const Icon(Icons.login),
-                      label: const AppText('登录后查看收藏'),
-                    ),
-                  ),
-                )
-              else if (_error != null)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: AppFailure(
-                    error: _error!,
-                    retry: () => _reload(page: _page),
-                    session: session,
-                  ),
-                )
-              else if (items.isEmpty && !_busy)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: AppStatus(
-                    icon: Icons.bookmarks_outlined,
-                    title: _query.isEmpty ? '暂无收藏' : '没有匹配收藏',
-                    message: _query.isEmpty
-                        ? '在作品详情收藏，之后可从这里继续阅读'
-                        : '换一个关键词，或清空搜索查看全部',
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList.separated(
-                    itemCount: rows.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final row = rows[index];
-                      if (row.item == null) return SourceSection(row.source);
-                      final comic = row.item!;
-                      final saved = session.store.recentProgress(comic.key);
-                      return LibraryBookTile(
-                        comic: comic,
-                        imageHost: session.imageHostFor(comic),
-                        selected: _selecting
-                            ? _selected.contains(comic.key)
-                            : null,
-                        onSelect: _busy ? null : (_) => _toggle(comic.key),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (comic.authors.isNotEmpty)
-                              Text(
-                                comic.authors.join(' / '),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            if (saved != null ||
-                                session.offlineIds.contains(comic.key))
-                              AppText(
-                                '${saved == null ? '' : '读到 ${saved.page + 1} 页'}${session.offlineIds.contains(comic.key) ? ' · 离线可读' : ''}',
-                                style: Theme.of(context).textTheme.labelSmall,
-                              ),
                           ],
                         ),
-                        onLongPress: () => setState(() {
-                          _selecting = true;
-                          _selected.add(comic.key);
-                        }),
-                        onTap: () => _selecting
-                            ? _toggle(comic.key)
-                            : openComic(
-                                context,
-                                session,
-                                comic,
-                                related: items,
-                              ),
-                      );
-                    },
-                  ),
-                ),
-              if (!_local && !needsLogin)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          tooltip: '上一页',
-                          onPressed: _busy || _page == 1
-                              ? null
-                              : () {
-                                  _scroll.jumpTo(0);
-                                  _reload(page: _page - 1);
-                                },
-                          icon: const Icon(Icons.chevron_left),
-                        ),
-                        Flexible(child: AppText('第 $_page 页 · 共 $_total 本')),
-                        IconButton(
-                          tooltip: '下一页',
-                          onPressed: _busy || _page * _size >= _total
-                              ? null
-                              : () {
-                                  _scroll.jumpTo(0);
-                                  _reload(page: _page + 1);
-                                },
-                          icon: const Icon(Icons.chevron_right),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-            ],
-          ),
-        ),
-        LibrarySelectionBar(
-          visible: _selecting,
-          count: _selected.length,
-          onDone: () => setState(() {
-            _selecting = false;
-            _selected.clear();
-          }),
-          actions: [
-            TextButton(
-              onPressed: _busy
+              ],
+            ),
+            AppSourceSwitch(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              cloud: !_local,
+              onChanged: _busy
                   ? null
-                  : () => setState(
-                      () => _selected.addAll(items.map((c) => c.key)),
+                  : (cloud) {
+                      setState(() {
+                        _local = !cloud;
+                        _folder = '0';
+                        _selected.clear();
+                        _selecting = false;
+                      });
+                      _reload();
+                    },
+            ),
+            SearchBar(
+              controller: _search,
+              hintText: AppTranslations.text(context, '筛选当前列表'),
+              leading: const Icon(Icons.search),
+              trailing: [
+                if (_query.isNotEmpty)
+                  IconButton(
+                    tooltip: AppTranslations.text(context, '清空搜索'),
+                    onPressed: () => setState(() {
+                      _query = '';
+                      _search.clear();
+                      _selected.clear();
+                    }),
+                    icon: const Icon(Icons.clear),
+                  ),
+              ],
+              onChanged: (value) => setState(() {
+                _query = value;
+                _selected.clear();
+              }),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (_local || !session.isPic)
+                  ActionChip(
+                    avatar: const Icon(Icons.folder_outlined, size: 18),
+                    label: AppText(_folders[_folder] ?? '默认收藏夹'),
+                    onPressed: _busy || needsLogin ? null : _folderSheet,
+                  ),
+                if (!_local)
+                  ActionChip(
+                    avatar: const Icon(Icons.sort, size: 18),
+                    label: AppText(
+                      session.isPic
+                          ? (_sort == 'mr' ? '最新收藏' : '最早收藏')
+                          : (_sort == 'mr' ? '收藏时间' : '更新时间'),
                     ),
-              child: const AppText('全选'),
+                    onPressed: _busy || needsLogin
+                        ? null
+                        : () {
+                            _sort = _sort == 'mr'
+                                ? (session.isPic ? 'da' : 'mp')
+                                : 'mr';
+                            _reload();
+                          },
+                  ),
+                LibrarySelectionToggle(
+                  selected: _selecting,
+                  onPressed: needsLogin
+                      ? null
+                      : () => setState(() {
+                          _selecting = !_selecting;
+                          _selected.clear();
+                        }),
+                ),
+              ],
             ),
-            if (_local || !session.isPic)
-              TextButton(
-                onPressed: _busy || _selected.isEmpty ? null : _moveSelected,
-                child: const AppText('移动'),
+            if (_busy)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: LinearProgressIndicator(),
               ),
-            TextButton(
-              onPressed: _busy || _selected.isEmpty ? null : _removeSelected,
-              child: const AppText('移除'),
-            ),
           ],
         ),
-      ],
+        slivers: [
+          if (needsLogin)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AppStatus(
+                icon: Icons.cloud_outlined,
+                title: '云端收藏',
+                message: '登录后同步收藏和观看历史',
+                action: FilledButton.icon(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => LoginScreen(session: session),
+                      ),
+                    );
+                    if (mounted) _reload();
+                  },
+                  icon: const Icon(Icons.login),
+                  label: const AppText('登录后查看收藏'),
+                ),
+              ),
+            )
+          else if (_error != null)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AppFailure(
+                error: _error!,
+                retry: () => _reload(page: _page),
+                session: session,
+              ),
+            )
+          else if (items.isEmpty && !_busy)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AppStatus(
+                icon: Icons.bookmarks_outlined,
+                title: _query.isEmpty ? '暂无收藏' : '没有匹配收藏',
+                message: _query.isEmpty
+                    ? '在作品详情收藏，之后可从这里继续阅读'
+                    : '换一个关键词，或清空搜索查看全部',
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.separated(
+                itemCount: rows.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final row = rows[index];
+                  if (row.item == null) return SourceSection(row.source);
+                  final comic = row.item!;
+                  final saved = session.store.recentProgress(comic.key);
+                  return LibraryBookTile(
+                    comic: comic,
+                    imageHost: session.imageHostFor(comic),
+                    selected: _selecting ? _selected.contains(comic.key) : null,
+                    onSelect: _busy ? null : (_) => _toggle(comic.key),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (comic.authors.isNotEmpty)
+                          Text(
+                            comic.authors.join(' / '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        if (saved != null ||
+                            session.offlineIds.contains(comic.key))
+                          AppText(
+                            '${saved == null ? '' : '读到 ${saved.page + 1} 页'}${session.offlineIds.contains(comic.key) ? ' · 离线可读' : ''}',
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                      ],
+                    ),
+                    onLongPress: () => setState(() {
+                      _selecting = true;
+                      _selected.add(comic.key);
+                    }),
+                    onTap: () => _selecting
+                        ? _toggle(comic.key)
+                        : openComic(context, session, comic, related: items),
+                  );
+                },
+              ),
+            ),
+          if (!_local && !needsLogin)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      tooltip: '上一页',
+                      onPressed: _busy || _page == 1
+                          ? null
+                          : () {
+                              _scroll.jumpTo(0);
+                              _reload(page: _page - 1);
+                            },
+                      icon: const Icon(Icons.chevron_left),
+                    ),
+                    Flexible(child: AppText('第 $_page 页 · 共 $_total 本')),
+                    IconButton(
+                      tooltip: '下一页',
+                      onPressed: _busy || _page * _size >= _total
+                          ? null
+                          : () {
+                              _scroll.jumpTo(0);
+                              _reload(page: _page + 1);
+                            },
+                      icon: const Icon(Icons.chevron_right),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+      selectionBar: LibrarySelectionBar(
+        visible: _selecting,
+        count: _selected.length,
+        onDone: () => setState(() {
+          _selecting = false;
+          _selected.clear();
+        }),
+        actions: [
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () =>
+                      setState(() => _selected.addAll(items.map((c) => c.key))),
+            child: const AppText('全选'),
+          ),
+          if (_local || !session.isPic)
+            TextButton(
+              onPressed: _busy || _selected.isEmpty ? null : _moveSelected,
+              child: const AppText('移动'),
+            ),
+          TextButton(
+            onPressed: _busy || _selected.isEmpty ? null : _removeSelected,
+            child: const AppText('移除'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -861,13 +846,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
         const SizedBox(height: 8),
         Align(
           alignment: AlignmentDirectional.centerStart,
-          child: TextButton.icon(
+          child: LibrarySelectionToggle(
+            selected: _selecting,
             onPressed: () => setState(() {
               _selecting = !_selecting;
               _selected.clear();
             }),
-            icon: const Icon(Icons.checklist),
-            label: AppText(_selecting ? '完成选择' : '选择'),
           ),
         ),
       ],
@@ -942,153 +926,141 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
     final status = _cloudStatus();
     final rowCount = _cloud ? cloudRows.length : localRows.length;
-    return Column(
-      children: [
-        Expanded(
-          child: LibraryScrollView(
-            storageKey: 'history:${_cloud ? session.source.id : 'local'}',
-            controller: _scroll,
-            onRefresh: _refresh,
-            header: _controls(all.length),
-            slivers: [
-              if (status != null)
-                SliverFillRemaining(hasScrollBody: false, child: status)
-              else if (rowCount == 0)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _cloudBusy
-                      ? const SizedBox.shrink()
-                      : AppStatus(
-                          icon: Icons.history,
-                          title: _query.isNotEmpty
-                              ? '没有匹配历史'
-                              : _cloud
-                              ? '暂无云端历史'
-                              : '阅读后会在这里保留进度',
-                        ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList.separated(
-                    itemCount: rowCount,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      if (_cloud) {
-                        final row = cloudRows[index];
-                        if (row.item == null) return SourceSection(row.source);
-                        final comic = row.item!;
-                        return LibraryBookTile(
-                          comic: comic,
-                          imageHost: session.imageHostFor(comic),
-                          subtitle: const AppText('云端阅读记录'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => openComic(context, session, comic),
-                        );
-                      }
-                      final row = localRows[index];
-                      if (row.item == null) return SourceSection(row.source);
-                      final entry = row.item!, comic = entry.comic;
-                      return LibraryBookTile(
-                        comic: comic,
-                        imageHost: session.imageHostFor(comic),
-                        selected: _selecting
-                            ? _selected.contains(comic.key)
-                            : null,
-                        onSelect: _removing ? null : (_) => _toggle(comic.key),
-                        subtitle: AppText('已读至第 ${entry.page + 1} 页'),
-                        trailing: const Icon(Icons.play_circle_outline),
-                        onLongPress: () => setState(() {
-                          _selecting = true;
-                          _selected.add(comic.key);
-                        }),
-                        onTap: () => _selecting
-                            ? _toggle(comic.key)
-                            : openProgress(context, session, entry),
-                      );
-                    },
-                  ),
-                ),
-              if (status == null &&
-                  (!_cloud && all.isNotEmpty ||
-                      _cloud && _cloudItems.isNotEmpty))
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          tooltip: AppTranslations.text(context, '上一页'),
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed:
-                              (_cloud
-                                  ? _cloudBusy || _cloudPage <= 1
-                                  : page <= 1)
-                              ? null
-                              : () {
-                                  if (_scroll.hasClients) _scroll.jumpTo(0);
-                                  if (_cloud) {
-                                    _loadCloud(page: _cloudPage - 1);
-                                  } else {
-                                    setState(() => _page = page - 1);
-                                  }
-                                },
-                        ),
-                        AppText(
-                          _cloud
-                              ? '第 $_cloudPage 页 · 共 $_cloudTotal 本'
-                              : '$page / $maxPage',
-                        ),
-                        IconButton(
-                          tooltip: AppTranslations.text(context, '下一页'),
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed:
-                              (_cloud
-                                  ? _cloudBusy || !_cloudMore
-                                  : page >= maxPage)
-                              ? null
-                              : () {
-                                  if (_scroll.hasClients) _scroll.jumpTo(0);
-                                  if (_cloud) {
-                                    _loadCloud(page: _cloudPage + 1);
-                                  } else {
-                                    setState(() => _page = page + 1);
-                                  }
-                                },
-                        ),
-                      ],
+    return LibrarySelectionLayout(
+      bodyBuilder: (bottomInset) => LibraryScrollView(
+        bottomInset: bottomInset,
+        storageKey: 'history:${_cloud ? session.source.id : 'local'}',
+        controller: _scroll,
+        onRefresh: _refresh,
+        header: _controls(all.length),
+        slivers: [
+          if (status != null)
+            SliverFillRemaining(hasScrollBody: false, child: status)
+          else if (rowCount == 0)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _cloudBusy
+                  ? const SizedBox.shrink()
+                  : AppStatus(
+                      icon: Icons.history,
+                      title: _query.isNotEmpty
+                          ? '没有匹配历史'
+                          : _cloud
+                          ? '暂无云端历史'
+                          : '阅读后会在这里保留进度',
                     ),
-                  ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.separated(
+                itemCount: rowCount,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  if (_cloud) {
+                    final row = cloudRows[index];
+                    if (row.item == null) return SourceSection(row.source);
+                    final comic = row.item!;
+                    return LibraryBookTile(
+                      comic: comic,
+                      imageHost: session.imageHostFor(comic),
+                      subtitle: const AppText('云端阅读记录'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => openComic(context, session, comic),
+                    );
+                  }
+                  final row = localRows[index];
+                  if (row.item == null) return SourceSection(row.source);
+                  final entry = row.item!, comic = entry.comic;
+                  return LibraryBookTile(
+                    comic: comic,
+                    imageHost: session.imageHostFor(comic),
+                    selected: _selecting ? _selected.contains(comic.key) : null,
+                    onSelect: _removing ? null : (_) => _toggle(comic.key),
+                    subtitle: AppText('已读至第 ${entry.page + 1} 页'),
+                    trailing: const Icon(Icons.play_circle_outline),
+                    onLongPress: () => setState(() {
+                      _selecting = true;
+                      _selected.add(comic.key);
+                    }),
+                    onTap: () => _selecting
+                        ? _toggle(comic.key)
+                        : openProgress(context, session, entry),
+                  );
+                },
+              ),
+            ),
+          if (status == null &&
+              (!_cloud && all.isNotEmpty || _cloud && _cloudItems.isNotEmpty))
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      tooltip: AppTranslations.text(context, '上一页'),
+                      icon: const Icon(Icons.chevron_left),
+                      onPressed:
+                          (_cloud ? _cloudBusy || _cloudPage <= 1 : page <= 1)
+                          ? null
+                          : () {
+                              if (_scroll.hasClients) _scroll.jumpTo(0);
+                              if (_cloud) {
+                                _loadCloud(page: _cloudPage - 1);
+                              } else {
+                                setState(() => _page = page - 1);
+                              }
+                            },
+                    ),
+                    AppText(
+                      _cloud
+                          ? '第 $_cloudPage 页 · 共 $_cloudTotal 本'
+                          : '$page / $maxPage',
+                    ),
+                    IconButton(
+                      tooltip: AppTranslations.text(context, '下一页'),
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed:
+                          (_cloud ? _cloudBusy || !_cloudMore : page >= maxPage)
+                          ? null
+                          : () {
+                              if (_scroll.hasClients) _scroll.jumpTo(0);
+                              if (_cloud) {
+                                _loadCloud(page: _cloudPage + 1);
+                              } else {
+                                setState(() => _page = page + 1);
+                              }
+                            },
+                    ),
+                  ],
                 ),
-            ],
+              ),
+            ),
+        ],
+      ),
+      selectionBar: LibrarySelectionBar(
+        visible: !_cloud && _selecting,
+        count: _selected.length,
+        onDone: () => setState(() {
+          _selecting = false;
+          _selected.clear();
+        }),
+        actions: [
+          TextButton(
+            onPressed: _removing
+                ? null
+                : () => setState(
+                    () => _selected.addAll(all.map((p) => p.comic.key)),
+                  ),
+            child: const AppText('全选'),
           ),
-        ),
-        LibrarySelectionBar(
-          visible: !_cloud && _selecting,
-          count: _selected.length,
-          onDone: () => setState(() {
-            _selecting = false;
-            _selected.clear();
-          }),
-          actions: [
-            TextButton(
-              onPressed: _removing
-                  ? null
-                  : () => setState(
-                      () => _selected.addAll(all.map((p) => p.comic.key)),
-                    ),
-              child: const AppText('全选'),
-            ),
-            TextButton(
-              onPressed: _removing || _selected.isEmpty
-                  ? null
-                  : _deleteSelected,
-              child: const AppText('删除'),
-            ),
-          ],
-        ),
-      ],
+          TextButton(
+            onPressed: _removing || _selected.isEmpty ? null : _deleteSelected,
+            child: const AppText('删除'),
+          ),
+        ],
+      ),
     );
   }
 }

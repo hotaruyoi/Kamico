@@ -319,10 +319,15 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(find.byKey(const ValueKey('detail-likes')), findsOneWidget);
-        expect(
-          find.text(likes == null ? '点赞数暂无数据' : '点赞 $likes'),
-          findsOneWidget,
+        expect(find.text(likes ?? '—'), findsOneWidget);
+        expect(find.text('Pic sample'), findsNothing);
+        final number = tester.widget<Text>(
+          find.descendant(
+            of: find.byKey(const ValueKey('detail-likes')),
+            matching: find.byType(Text),
+          ),
         );
+        expect(number.style!.fontWeight, FontWeight.w700);
         if (likes == '12,345') await capture(tester, key, 'detail-likes');
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());

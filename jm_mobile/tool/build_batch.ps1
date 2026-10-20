@@ -10,7 +10,7 @@ $projectDirectory = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectDirectory
 $manifest = Get-Content -LiteralPath 'pubspec.yaml' -Raw
 $manifest = [regex]::Replace($manifest, '(?m)^version:.*$', [System.Text.RegularExpressions.MatchEvaluator]{param($match) "version: ${Version}+${BuildNumber}"})
-Set-Content -LiteralPath 'pubspec.yaml' -Value $manifest -Encoding utf8
+Set-Content -LiteralPath 'pubspec.yaml' -Value $manifest.TrimEnd() -Encoding utf8
 Set-Content -LiteralPath 'lib/app_version.dart' -Value "const appVersion = '$Version';" -Encoding utf8
 $localProperties = Get-Content -LiteralPath 'android/local.properties' -Raw
 $flutterExecutable = (Get-Command flutter -ErrorAction SilentlyContinue).Source

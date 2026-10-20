@@ -14,6 +14,7 @@ import 'preferences.dart';
 import 'design_system.dart';
 import 'dialogs.dart';
 import 'privacy.dart';
+import 'app_licenses.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.session});
@@ -242,11 +243,7 @@ class SettingsScreen extends StatelessWidget {
                 leading: const Icon(Icons.code),
                 title: const AppText('开源许可'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => showLicensePage(
-                  context: context,
-                  applicationName: appName,
-                  applicationVersion: appVersion,
-                ),
+                onTap: () => openAppLicenses(context),
               ),
             ],
           ),

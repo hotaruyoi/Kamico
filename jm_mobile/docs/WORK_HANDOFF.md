@@ -1,11 +1,12 @@
 # kamico 工作交接
 
-更新日期：2026-10-20。工作区 `D:\Projects\JMPicMerge`，客户端在 `jm_mobile/`，根目录没有 Git。本文替代上一轮状态入口；0.21.0 原交接完整保存在 [history/WORK_HANDOFF_0_21.md](history/WORK_HANDOFF_0_21.md)。
+更新日期：2026-10-20。工作区 `D:\Projects\JMPicMerge`，客户端在 `jm_mobile/`。本轮已初始化 **Kamico 本地 Git**，`main` 分支，尚无远程地址，见 [REPOSITORY.md](REPOSITORY.md)。0.21.0 原交接完整保存在 [history/WORK_HANDOFF_0_21.md](history/WORK_HANDOFF_0_21.md)。
 
 ## 当前状态
 
-- 当前源码版本 **0.23.0+26**，按用户真机反馈完善历史、点赞显示、阅读设置和切源入口，记录见 [UI_0_23.md](UI_0_23.md)。
-- **0.23.0 已由用户确认真机验收通过**。下一版转为正式版 1.0，先做计划，详见 [RELEASE_1_0_PLAN.md](RELEASE_1_0_PLAN.md)；功能代码及工程版本号尚未改动，不能将计划当作已实现。
+- 当前源码为正式版 **1.0.0+27**，已实现用户确认的详情排版、选择开关/浮动操作条、发现入口拖动排序及阅读菜单覆盖层，并精简关于信息及许可展示；实际交付状态见 [RELEASE_1_0.md](RELEASE_1_0.md)。
+- 已完成同版本双包、身份签名核验；静态检查无问题，147 项回归通过、1 项可选预览跳过，专项与预览 20 项通过。最终 ADB 无设备，代理未安装本版，尚未用户验收。Git 的 `v1.0.0` 指向本版提交，远程未配置。
+- **0.23.0 已由用户确认真机验收通过**，作为 Git 初始基线与 `baseline-0.23.0` 标签；原产物与 [UI_0_23.md](UI_0_23.md) 保留。
 - **0.22.0+25 已由用户于 2026-10-20 确认真机验收通过**。双源架构和历史验证见 [MULTI_SOURCE_0_22.md](MULTI_SOURCE_0_22.md)，对应快照保留在 `releases/0.22.0/`；当时代理 ADB 无设备及本机探测超时属于历史证据，不再作为该版待办。
 - 0.23.0 代理交付时已构建同版本 Release / Debug，包名和既有签名核验通过；静态检查无问题、135 项回归通过、1 项可选预览跳过，另 8 项专项预览通过。当时 ADB 列表为空，代理未安装；后续用户验收确认如上。合成回归不能替代真机上游可用性或真机 FPS 结论。
 - 上一版 **0.21.0+24 已由用户验收通过**。该版专项 Profile 对照已取消，不恢复为任务；原 APK、源码、签名和缓存均保留。
@@ -23,7 +24,10 @@
 9. 共用 kamico 已有漫画流程，能力不同的入口按源调整。Pic 没有已确认的云端文件夹、云端历史、JM 周刊/连载、购买及补签入口，不能伪装支持。
 10. Pic 聊天、游戏、广场、独立社区、代理网络栈、超分和旧 Qt 数据导入不在本轮范围。
 11. 历史页始终显示“本地历史 / 云端历史”，本地复用书架封面卡片及选择栏；JM 云端接口继续保留，Pic 云端页说明未提供接口，可返回本地，不伪造云端记录。
-12. 详情封面右侧显示只读点赞数（JM `likes`、Pic `totalLikes` / `likesCount`），实际 0 与缺失区分。阅读方向下拉与阅读模式使用同宽、同默认高度和圆角；大字体允许自适应增高。
+12. 详情封面右侧显示只读点赞图标与粗体数字（JM `likes`、Pic `totalLikes` / `likesCount`），实际 0 与缺失“—”区分；信息块间隔 24dp，Pic 隐藏编号。阅读方向下拉与阅读模式同宽、同默认高度和圆角；大字体允许自适应增高。
+13. 书架和本地历史的“选择”常驻且保持文案，连续点击开关并在退出时清空勾选。共用操作条浮动在透明外围上，列表按条高保留尾部滚动空间，不因菜单显隐缩小视口。
+14. 发现入口顺序由公共外观偏好保存，两源共用；Pic 略过 JM 专属入口。拖动即时保存、可恢复默认，入口 ID 与图标/名称/路由一同排序。
+15. 阅读上下控制层不参与漫画尺寸布局；显隐不重建图片元素或控制器，系统栏安全区仅影响覆盖控件。原模式、进度和离线格式继续兼容。
 
 ## 实现入口与必须保护的行为
 
@@ -37,6 +41,10 @@
 - `lib/data/image_repository.dart`：Pic 按媒体 URL 获取原始图片，不执行 JM 分片还原、不向媒体主机发送账号 token；JM 原磁盘缓存键保留。
 - `lib/ui/reading_navigation.dart`、`discovery.dart`：所有跨源打开先绑定 `forSource(comic.source)`；`comic_browser.dart` 宽屏切书也重新绑定。
 - `lib/ui/library_layout.dart`：sourceSections / SourceSection 保证 JM、PIC 连续分区；bookcase / history / downloads 共用。
+- `LibrarySelectionLayout` 固定列表尺寸，测量圆角条实际高度作为尾部 inset；`LibrarySelectionToggle` 保留按钮与固定文案。
+- `lib/domain/discovery_shortcut.dart` 解析稳定入口标识并兼容异常偏好；`ui/discovery_shortcut_order.dart` 为手柄拖动与串行保存，`discovery.dart` 按标识绑定路由。
+- `lib/ui/reader.dart` 的 `_frame` 使用覆盖层，内容层固定全屏；控制层监听存储错误但不影响内容布局。
+- `lib/data/app_licenses.dart` 共用原 LGPL 正文并保留两份来源署名；按依赖闭包去除仅开发使用的包名，`ui/app_licenses.dart` 保留原正文和段落缩进，完整 NOTICES 资产仍在。
 - `lib/ui/bookcase.dart`：历史保留本地/云端切换，云端请求按源/账号/连接范围和 generation 校验；删除和撤销按 source key，撤销不覆盖新进度。
 - `lib/ui/reader_settings.dart`、`filled_select.dart`：方向控件和模式卡片默认 88dp；模式 ListTile 显式去除主题额外竖向 contentPadding，保持实际高度一致；设置保存逻辑不变。
 - `lib/data/platform_files.dart`、Android `PdfDownloads.kt`：通过白名单来源名创建 PDF 子目录，旧文件及旧离线 manifest 继续兼容。
@@ -53,7 +61,7 @@ Pic 章节特别注意：参考实现中 ep.order 可能重复，实际读取用
 
 - Flutter `D:\Application\Flutter\flutter`，Android SDK `D:\Application\Android-SDK`，JDK `C:\Users\12275\.jdks\temurin-21`。
 - 检查：`flutter analyze --no-pub`、`flutter test --no-pub --reporter expanded`。
-- 构建：设置既有 ANDROID_HOME / JAVA_HOME / JM_USE_MAVEN_MIRROR，运行 `tool/build_batch.ps1`，下次新版本 build number 大于 26。
+- 构建：设置既有 ANDROID_HOME / JAVA_HOME / JM_USE_MAVEN_MIRROR，运行 `tool/build_batch.ps1`，下次新版本 build number 大于 27。
 - Release 包名 `app.jmpic.jm_mobile`，既有签名；Debug/Profile `.debug` 身份，两者名称、私有数据及默认公共目录继续分开。
 - ADB 重新识别设备，不使用历史序列号当在线事实。真机操作优先语义/日志/VM，必要时截图。不得擅自改用户 VPN。
 - 本版真实账号写操作由用户发起，自动测试用合成内容。未配置新发行签名、后台下载、更新发布源、桌面发行或 Qt 迁移。

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data/local_store.dart';
+import 'data/app_licenses.dart';
 import 'ui/app.dart';
 import 'ui/translations.dart';
 import 'ui/cover_image_provider.dart';
@@ -10,20 +10,7 @@ import 'ui/cover_image_provider.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   configureImageCaching();
-  LicenseRegistry.addLicense(() async* {
-    yield LicenseEntryWithLineBreaks([
-      'JMComic-qt (tonquer) / kamico',
-    ], await rootBundle.loadString('LICENSE'));
-    yield LicenseEntryWithLineBreaks([
-      'JMComic-Crawler-Python (hect0x7)',
-    ], await rootBundle.loadString('third_party/jmcomic.LICENSE'));
-    yield LicenseEntryWithLineBreaks([
-      'picacg-qt (tonquer)',
-    ], await rootBundle.loadString('third_party/picacg.LICENSE'));
-    yield LicenseEntryWithLineBreaks([
-      'GNU GPL v3 (LGPL supplemental terms)',
-    ], await rootBundle.loadString('third_party/GPL-3.0.txt'));
-  });
+  LicenseRegistry.addLicense(applicationLicenses);
   try {
     await AppTranslations.load();
     final store = LocalStore(await SharedPreferences.getInstance());

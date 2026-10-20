@@ -374,39 +374,49 @@ class _DetailScreenState extends State<DetailScreen>
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 24,
                           children: [
                             if (detail.comic.authors.isNotEmpty)
                               Text(
                                 detail.comic.authors.join(' / '),
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
-                            const SizedBox(height: 16),
-                            Text(
-                              '${detail.comic.source.label} ${detail.comic.id}',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(color: colors.onSurfaceVariant),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              key: const ValueKey('detail-likes'),
-                              children: [
-                                Icon(
-                                  Icons.thumb_up_outlined,
-                                  size: 18,
-                                  color: colors.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: AppText(
-                                    detail.likes == null
-                                        ? '点赞数暂无数据'
-                                        : '点赞 ${detail.likes}',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodyMedium,
+                            if (detail.comic.source == ContentSource.jm)
+                              Text(
+                                '${detail.comic.source.label} ${detail.comic.id}',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: colors.onSurfaceVariant),
+                              ),
+                            Semantics(
+                              label: AppTranslations.text(
+                                context,
+                                detail.likes == null
+                                    ? '点赞数暂无数据'
+                                    : '点赞 ${detail.likes}',
+                              ),
+                              excludeSemantics: true,
+                              child: Row(
+                                key: const ValueKey('detail-likes'),
+                                children: [
+                                  Icon(
+                                    Icons.thumb_up_outlined,
+                                    size: 18,
+                                    color: colors.onSurfaceVariant,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: AppText(
+                                      detail.likes ?? '—',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),

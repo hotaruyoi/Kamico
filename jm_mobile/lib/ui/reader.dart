@@ -512,30 +512,19 @@ class _ReaderScreenState extends State<ReaderScreen>
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) => Theme(
-    data:
-        AppDesign.theme(
-          Theme.of(context).colorScheme.primary,
-          Brightness.dark,
-          Theme.of(context).textTheme.bodyMedium?.fontFamily ?? 'sans-serif',
-        ).copyWith(
-          textTheme: Theme.of(context).textTheme.apply(
-            bodyColor: Colors.white,
-            displayColor: Colors.white,
-          ),
-        ),
-    child: PopScope<void>(
-      canPop: !widget.returnToComic || _goingHome,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _back();
-      },
-      child: Builder(
-        builder: (context) => Scaffold(
-          backgroundColor: Colors.black,
-          appBar: !_chrome
-              ? null
-              : AppBar(
+  Widget _frame(BuildContext context, Widget content, {Widget? controls}) =>
+      Stack(
+        fit: StackFit.expand,
+        children: [
+          content,
+          if (_chrome)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: SizedBox(
+                height: 64 + MediaQuery.viewPaddingOf(context).top,
+                child: AppBar(
                   leading: IconButton(
                     tooltip: AppTranslations.text(context, '返回'),
                     onPressed: _back,
@@ -572,155 +561,197 @@ class _ReaderScreenState extends State<ReaderScreen>
                     ),
                   ],
                 ),
-          body: FutureBuilder(
+              ),
+            ),
+          if (controls != null)
+            Positioned(left: 0, right: 0, bottom: 0, child: controls),
+        ],
+      );
+
+  Widget _controls(BuildContext context, ReaderChapter data) => Material(
+    color: Colors.black.withValues(alpha: .88),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_chrome && _autoStatus.isNotEmpty)
+          Semantics(liveRegion: true, child: AppText(_autoStatus)),
+        if (_chrome && _index + 1 >= data.pages.length)
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const AppText('本章最后一页'),
+              if (_knownChapters == null)
+                TextButton(
+                  onPressed: () => _chapterAction(),
+                  child: const AppText('查看章节'),
+                )
+              else if (_knownChapters!.indexWhere(
+                        (c) => c.id == widget.chapter.id,
+                      ) +
+                      1 <
+                  _knownChapters!.length)
+                TextButton.icon(
+                  onPressed: () => _chapterAction(relative: 1),
+                  icon: const Icon(Icons.skip_next),
+                  label: const AppText('继续下一章'),
+                )
+              else
+                const AppText(' · 已到最后一章'),
+            ],
+          ),
+        ListenableBuilder(
+          listenable: widget.session,
+          builder: (_, _) => widget.session.storageError == null
+              ? const SizedBox.shrink()
+              : AppText(
+                  widget.session.storageError!,
+                  style: const TextStyle(color: Colors.orange),
+                ),
+        ),
+        if (_chrome)
+          SafeArea(
+            top: false,
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: AppTranslations.text(context, '上一页'),
+                  color: Colors.white,
+                  onPressed: _index == 0 ? null : () => _jump(_index - 1),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: _sliderTarget ?? _index.toDouble(),
+                    label: '第 ${(_sliderTarget ?? _index).round() + 1} 页',
+                    min: 0,
+                    max: (data.pages.length - 1).clamp(1, 1000000).toDouble(),
+                    onChanged: data.pages.length < 2
+                        ? null
+                        : (v) => setState(() => _sliderTarget = v),
+                    onChangeStart: (_) => _stopAuto('手动定位，自动阅读已停止'),
+                    onChangeEnd: (v) {
+                      _jump(v.round());
+                      setState(() => _sliderTarget = null);
+                    },
+                  ),
+                ),
+                TextButton(
+                  onPressed: _pageNumber,
+                  child: AppText(
+                    '${_index + 1}/${data.pages.length}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+                IconButton(
+                  tooltip: AppTranslations.text(context, '下一页'),
+                  color: Colors.white,
+                  onPressed: _index + 1 >= data.pages.length
+                      ? null
+                      : () => _jump(_index + 1),
+                  icon: const Icon(Icons.chevron_right),
+                ),
+                IconButton(
+                  tooltip: AppTranslations.text(
+                    context,
+                    _timer == null ? '自动翻页' : '停止自动翻页',
+                  ),
+                  color: Colors.white,
+                  onPressed: _auto,
+                  icon: Icon(_timer == null ? Icons.play_arrow : Icons.pause),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => Theme(
+    data:
+        AppDesign.theme(
+          Theme.of(context).colorScheme.primary,
+          Brightness.dark,
+          Theme.of(context).textTheme.bodyMedium?.fontFamily ?? 'sans-serif',
+        ).copyWith(
+          textTheme: Theme.of(context).textTheme.apply(
+            bodyColor: Colors.white,
+            displayColor: Colors.white,
+          ),
+        ),
+    child: PopScope<void>(
+      canPop: !widget.returnToComic || _goingHome,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: Builder(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          resizeToAvoidBottomInset: false,
+          body: FutureBuilder<ReaderChapter>(
             future: _chapter,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return AppFailure(
-                  error: snapshot.error!,
-                  retry: () => setState(_load),
-                  session: widget.session,
+                return _frame(
+                  context,
+                  AppFailure(
+                    error: snapshot.error!,
+                    retry: () => setState(_load),
+                    session: widget.session,
+                  ),
                 );
               }
               final data = snapshot.data;
               if (data == null) {
-                return const Center(child: CircularProgressIndicator());
+                return _frame(
+                  context,
+                  const Center(child: CircularProgressIndicator()),
+                );
               }
               if (data.pages.isEmpty) {
-                return const Center(
-                  child: AppText(
-                    '该章节暂无图片',
-                    style: TextStyle(color: Colors.white),
+                return _frame(
+                  context,
+                  const Center(
+                    child: AppText(
+                      '该章节暂无图片',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 );
               }
-              return Column(
-                children: [
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, box) => GestureDetector(
-                        key: const ValueKey('reader-tap-surface'),
-                        behavior: HitTestBehavior.opaque,
-                        onTapUp: (event) {
-                          final center = Rect.fromCenter(
-                            center: Offset(box.maxWidth / 2, box.maxHeight / 2),
-                            width: box.maxWidth * math.sqrt(.5),
-                            height: box.maxHeight * math.sqrt(.5),
-                          );
-                          if (center.contains(event.localPosition)) {
-                            _toggleChrome();
-                          }
-                        },
-                        child: _mode.scrolling
-                            ? _continuous(box, data)
-                            : PageView.builder(
-                                key: ValueKey(_mode),
-                                controller: _pages,
-                                reverse: _mode.reversed,
-                                itemCount: data.pages.length,
-                                onPageChanged: _changed,
-                                itemBuilder: (_, page) => _image(page),
-                              ),
-                      ),
-                    ),
-                  ),
-                  if (_chrome && _autoStatus.isNotEmpty)
-                    Semantics(liveRegion: true, child: AppText(_autoStatus)),
-                  if (_chrome && _index + 1 >= data.pages.length)
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        const AppText('本章最后一页'),
-                        if (_knownChapters == null)
-                          TextButton(
-                            onPressed: () => _chapterAction(),
-                            child: const AppText('查看章节'),
-                          )
-                        else if (_knownChapters!.indexWhere(
-                                  (c) => c.id == widget.chapter.id,
-                                ) +
-                                1 <
-                            _knownChapters!.length)
-                          TextButton.icon(
-                            onPressed: () => _chapterAction(relative: 1),
-                            icon: const Icon(Icons.skip_next),
-                            label: const AppText('继续下一章'),
-                          )
-                        else
-                          const AppText(' · 已到最后一章'),
-                      ],
-                    ),
-                  ListenableBuilder(
-                    listenable: widget.session,
-                    builder: (_, _) => widget.session.storageError == null
-                        ? const SizedBox.shrink()
-                        : AppText(
-                            widget.session.storageError!,
-                            style: const TextStyle(color: Colors.orange),
+              return _frame(
+                context,
+                LayoutBuilder(
+                  builder: (context, box) => GestureDetector(
+                    key: const ValueKey('reader-tap-surface'),
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (event) {
+                      final center = Rect.fromCenter(
+                        center: Offset(box.maxWidth / 2, box.maxHeight / 2),
+                        width: box.maxWidth * math.sqrt(.5),
+                        height: box.maxHeight * math.sqrt(.5),
+                      );
+                      if (center.contains(event.localPosition)) _toggleChrome();
+                    },
+                    child: _mode.scrolling
+                        ? _continuous(box, data)
+                        : PageView.builder(
+                            key: ValueKey(_mode),
+                            controller: _pages,
+                            reverse: _mode.reversed,
+                            itemCount: data.pages.length,
+                            onPageChanged: _changed,
+                            itemBuilder: (_, page) => _image(page),
                           ),
                   ),
-                  if (_chrome)
-                    SafeArea(
-                      top: false,
-                      child: Row(
-                        children: [
-                          IconButton(
-                            tooltip: AppTranslations.text(context, '上一页'),
-                            color: Colors.white,
-                            onPressed: _index == 0
-                                ? null
-                                : () => _jump(_index - 1),
-                            icon: const Icon(Icons.chevron_left),
-                          ),
-                          Expanded(
-                            child: Slider(
-                              value: _sliderTarget ?? _index.toDouble(),
-                              label:
-                                  '第 ${(_sliderTarget ?? _index).round() + 1} 页',
-                              min: 0,
-                              max: (data.pages.length - 1)
-                                  .clamp(1, 1000000)
-                                  .toDouble(),
-                              onChanged: data.pages.length < 2
-                                  ? null
-                                  : (v) => setState(() => _sliderTarget = v),
-                              onChangeStart: (_) => _stopAuto('手动定位，自动阅读已停止'),
-                              onChangeEnd: (v) {
-                                _jump(v.round());
-                                setState(() => _sliderTarget = null);
-                              },
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: _pageNumber,
-                            child: AppText(
-                              '${_index + 1}/${data.pages.length}',
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          IconButton(
-                            tooltip: AppTranslations.text(context, '下一页'),
-                            color: Colors.white,
-                            onPressed: _index + 1 >= data.pages.length
-                                ? null
-                                : () => _jump(_index + 1),
-                            icon: const Icon(Icons.chevron_right),
-                          ),
-                          IconButton(
-                            tooltip: AppTranslations.text(
-                              context,
-                              _timer == null ? '自动翻页' : '停止自动翻页',
-                            ),
-                            color: Colors.white,
-                            onPressed: _auto,
-                            icon: Icon(
-                              _timer == null ? Icons.play_arrow : Icons.pause,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
+                ),
+                controls: ListenableBuilder(
+                  listenable: widget.session,
+                  builder: (_, _) =>
+                      _chrome || widget.session.storageError != null
+                      ? _controls(context, data)
+                      : const SizedBox.shrink(),
+                ),
               );
             },
           ),

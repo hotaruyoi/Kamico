@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../domain/models.dart';
 import 'cover_image.dart';
 import 'translations.dart';
 import 'design_system.dart';
-import 'motion.dart';
 
 /// Keep each source contiguous, retaining the caller's order within it.
 List<({ContentSource source, T? item})> sourceSections<T>(
@@ -45,12 +45,14 @@ class LibraryScrollView extends StatelessWidget {
     required this.slivers,
     required this.onRefresh,
     this.controller,
+    this.bottomInset = 0,
   });
   final String storageKey;
   final Widget header;
   final List<Widget> slivers;
   final Future<void> Function() onRefresh;
   final ScrollController? controller;
+  final double bottomInset;
   @override
   Widget build(BuildContext context) => RefreshIndicator(
     onRefresh: onRefresh,
@@ -65,10 +67,102 @@ class LibraryScrollView extends StatelessWidget {
           sliver: SliverToBoxAdapter(child: header),
         ),
         ...slivers,
-        const SliverToBoxAdapter(
-          child: SafeArea(top: false, child: SizedBox(height: 16)),
+        SliverToBoxAdapter(
+          child: SafeArea(
+            top: false,
+            child: SizedBox(height: 16 + bottomInset),
+          ),
         ),
       ],
+    ),
+  );
+}
+
+/// Float the action bar without shrinking the list or painting a rectangular dock.
+class LibrarySelectionLayout extends StatefulWidget {
+  const LibrarySelectionLayout({
+    super.key,
+    required this.bodyBuilder,
+    required this.selectionBar,
+  });
+  final Widget Function(double bottomInset) bodyBuilder;
+  final LibrarySelectionBar selectionBar;
+  @override
+  State<LibrarySelectionLayout> createState() => _LibrarySelectionLayoutState();
+}
+
+class _LibrarySelectionLayoutState extends State<LibrarySelectionLayout> {
+  double _height = 0;
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      widget.bodyBuilder(widget.selectionBar.visible ? _height : 0),
+      if (widget.selectionBar.visible)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: _BarMeasure(
+            onHeight: (height) {
+              if (mounted && _height != height) {
+                setState(() => _height = height);
+              }
+            },
+            child: widget.selectionBar,
+          ),
+        ),
+    ],
+  );
+}
+
+class _BarMeasure extends SingleChildRenderObjectWidget {
+  const _BarMeasure({required this.onHeight, required super.child});
+  final ValueChanged<double> onHeight;
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _BarMeasureBox(onHeight);
+  @override
+  void updateRenderObject(BuildContext context, _BarMeasureBox renderObject) =>
+      renderObject.onHeight = onHeight;
+}
+
+class _BarMeasureBox extends RenderProxyBox {
+  _BarMeasureBox(this.onHeight);
+  ValueChanged<double> onHeight;
+  double? _height;
+  @override
+  void performLayout() {
+    super.performLayout();
+    if (_height == size.height) return;
+    _height = size.height;
+    final height = size.height;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (attached) onHeight(height);
+    });
+  }
+}
+
+class LibrarySelectionToggle extends StatelessWidget {
+  const LibrarySelectionToggle({
+    super.key,
+    required this.selected,
+    required this.onPressed,
+  });
+  final bool selected;
+  final VoidCallback? onPressed;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    child: TextButton.icon(
+      style: TextButton.styleFrom(
+        backgroundColor: selected
+            ? Theme.of(context).colorScheme.secondaryContainer
+            : Colors.transparent,
+      ),
+      onPressed: onPressed,
+      icon: const Icon(Icons.checklist),
+      label: const AppText('选择'),
     ),
   );
 }
@@ -156,30 +250,27 @@ class LibrarySelectionBar extends StatelessWidget {
   final List<Widget> actions;
   final bool visible;
   @override
-  Widget build(BuildContext context) => AppReveal(
-    visible: visible,
-    child: SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppDesign.contentWidth),
-          child: Material(
-            elevation: 3,
-            borderRadius: BorderRadius.circular(28),
-            clipBehavior: Clip.antiAlias,
-            color: Theme.of(context).colorScheme.surfaceContainerHigh,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Wrap(
-                spacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Semantics(liveRegion: true, child: AppText('已选 $count')),
-                  ...actions,
-                  TextButton(onPressed: onDone, child: const AppText('完成选择')),
-                ],
-              ),
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: AppDesign.contentWidth),
+        child: Material(
+          elevation: 0,
+          borderRadius: BorderRadius.circular(28),
+          clipBehavior: Clip.antiAlias,
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Semantics(liveRegion: true, child: AppText('已选 $count')),
+                ...actions,
+                TextButton(onPressed: onDone, child: const AppText('完成选择')),
+              ],
             ),
           ),
         ),

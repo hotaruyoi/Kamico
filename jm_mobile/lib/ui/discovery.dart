@@ -14,6 +14,7 @@ import 'failure.dart';
 import 'comic_browser.dart';
 import 'filled_select.dart';
 import 'motion.dart';
+import '../domain/discovery_shortcut.dart';
 
 Future<void> openComic(
   BuildContext context,
@@ -392,91 +393,92 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     ),
   );
   Widget _shortcuts() => LayoutBuilder(
-    builder: (context, box) => SizedBox(
-      height: 64,
-      child: NotificationListener<ScrollNotification>(
-        onNotification: (notification) {
-          if (notification.metrics.axis != Axis.horizontal) return false;
-          final start = notification.metrics.extentBefore > 1;
-          final end = notification.metrics.extentAfter > 1;
-          if (start != _fadeStart || end != _fadeEnd) {
-            setState(() {
-              _fadeStart = start;
-              _fadeEnd = end;
-            });
-          }
-          return false;
-        },
-        child: ShaderMask(
-          blendMode: BlendMode.dstIn,
-          shaderCallback: (bounds) => LinearGradient(
-            colors: [
-              _fadeStart ? Colors.transparent : Colors.white,
-              Colors.white,
-              Colors.white,
-              _fadeEnd ? Colors.transparent : Colors.white,
-            ],
-            stops: const [0, .045, .955, 1],
-          ).createShader(bounds),
-          child: ListView.separated(
-            key: PageStorageKey(
-              'discovery-shortcuts:${widget.session.source.id}',
+    builder: (context, box) {
+      final shortcuts = discoveryShortcutOrder(
+        widget.session.appearance['discovery_shortcut_order'],
+      ).where((item) => item.supports(widget.session.source)).toList();
+      return SizedBox(
+        height: 64,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification.metrics.axis != Axis.horizontal) return false;
+            final start = notification.metrics.extentBefore > 1;
+            final end = notification.metrics.extentAfter > 1;
+            if (start != _fadeStart || end != _fadeEnd) {
+              setState(() {
+                _fadeStart = start;
+                _fadeEnd = end;
+              });
+            }
+            return false;
+          },
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [
+                _fadeStart ? Colors.transparent : Colors.white,
+                Colors.white,
+                Colors.white,
+                _fadeEnd ? Colors.transparent : Colors.white,
+              ],
+              stops: const [0, .045, .955, 1],
+            ).createShader(bounds),
+            child: ListView.separated(
+              key: PageStorageKey(
+                'discovery-shortcuts:${widget.session.source.id}',
+              ),
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              itemCount: shortcuts.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final item = shortcuts[index];
+                return SizedBox(
+                  width: (box.maxWidth - 48) / 3,
+                  child: FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    key: ValueKey('shortcut-${item.name}'),
+                    onPressed: () => _push(item.label, switch (item) {
+                      DiscoveryShortcut.category => CatalogScreen(
+                        session: widget.session,
+                      ),
+                      DiscoveryShortcut.ranking => CatalogScreen(
+                        session: widget.session,
+                        initialSort: 'mv',
+                      ),
+                      DiscoveryShortcut.latest => PagedComics(
+                        session: widget.session,
+                        load: widget.session.api.latest,
+                      ),
+                      _ => ScheduleScreen(
+                        session: widget.session,
+                        weekly: item == DiscoveryShortcut.weekly,
+                      ),
+                    }),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(item.icon, size: 18),
+                          const SizedBox(width: 6),
+                          AppText(item.label),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            itemCount: widget.session.isPic ? 3 : 5,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final labels = ['分类', '排行榜', '最近更新', '每周连载', '周刊推荐'];
-              final icons = [
-                Icons.category_outlined,
-                Icons.leaderboard_outlined,
-                Icons.update,
-                Icons.calendar_view_week_outlined,
-                Icons.date_range_outlined,
-              ];
-              return SizedBox(
-                width: (box.maxWidth - 48) / 3,
-                child: FilledButton.tonal(
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  onPressed: () => _push(labels[index], switch (index) {
-                    0 => CatalogScreen(session: widget.session),
-                    1 => CatalogScreen(
-                      session: widget.session,
-                      initialSort: 'mv',
-                    ),
-                    2 => PagedComics(
-                      session: widget.session,
-                      load: widget.session.api.latest,
-                    ),
-                    _ => ScheduleScreen(
-                      session: widget.session,
-                      weekly: index == 4,
-                    ),
-                  }),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(icons[index], size: 18),
-                        const SizedBox(width: 6),
-                        AppText(labels[index]),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
         ),
-      ),
-    ),
+      );
+    },
   );
   Widget _header() => Material(
     color: Theme.of(context).colorScheme.surface,

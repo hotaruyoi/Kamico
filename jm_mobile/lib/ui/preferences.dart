@@ -11,6 +11,8 @@ import 'design_system.dart';
 import 'card_density.dart';
 import '../domain/card_layout.dart';
 import 'font_picker.dart';
+import 'discovery_shortcut_order.dart';
+import 'app_licenses.dart';
 
 class AppearanceScreen extends StatelessWidget {
   const AppearanceScreen({super.key, required this.session});
@@ -171,6 +173,23 @@ class AppearanceScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SectionTitle('发现页', icon: Icons.explore_outlined),
+            AppPanel(
+              padding: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(Icons.reorder),
+                title: const AppText('发现页入口排序'),
+                subtitle: const AppText('拖动调整分类、排行等入口的位置'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        DiscoveryShortcutOrderScreen(session: session),
+                  ),
+                ),
+              ),
+            ),
             const SectionTitle('阅读列表', icon: Icons.grid_view_outlined),
             AppPanel(
               child: Column(
@@ -268,19 +287,11 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                       '$appName $appVersion',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
-                    const SizedBox(height: 8),
-                    const AppText('Flutter 独立客户端 · Android 优先'),
-                    const SizedBox(height: 8),
-                    const AppText('更新检查将在配置正式发布源后接入。'),
                   ],
                 ),
               ),
               TextButton(
-                onPressed: () => showLicensePage(
-                  context: context,
-                  applicationName: appName,
-                  applicationVersion: appVersion,
-                ),
+                onPressed: () => openAppLicenses(context),
                 child: const AppText('开源许可'),
               ),
               const Divider(),

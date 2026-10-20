@@ -467,411 +467,395 @@ class _DownloadScreenState extends State<DownloadScreen> {
     }
     final running = queue.jobs.values.where((j) => j.state == 'running').length;
     final waiting = queue.jobs.values.where((j) => j.state == 'queued').length;
-    return Column(
-      children: [
-        Expanded(
-          child: LibraryScrollView(
-            storageKey: 'downloads',
-            controller: _scroll,
-            onRefresh: _reload,
-            header: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    return LibrarySelectionLayout(
+      bodyBuilder: (bottomInset) => LibraryScrollView(
+        bottomInset: bottomInset,
+        storageKey: 'downloads',
+        controller: _scroll,
+        onRefresh: _reload,
+        header: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AppText(
-                            _library ? '离线书库' : '下载管理',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          AppText(
-                            _library
-                                ? '${_chapters.map((c) => c.comic.key).toSet().length} 本 · ${_chapters.length} 章 · ${(_bytes / 1048576).toStringAsFixed(1)} MB'
-                                : '${queue.jobs.length} 章 · 进行中 $running · 等待 $waiting',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppText(
+                        _library ? '离线书库' : '下载管理',
+                        style: Theme.of(context).textTheme.headlineSmall,
                       ),
-                    ),
-                    IconButton(
-                      tooltip: AppTranslations.text(context, '下载设置'),
-                      onPressed: _busy ? null : _settings,
-                      icon: const Icon(Icons.settings_outlined),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(
-                      value: false,
-                      label: AppText('下载任务'),
-                      icon: Icon(Icons.downloading_outlined),
-                    ),
-                    ButtonSegment(
-                      value: true,
-                      label: AppText('本地书库'),
-                      icon: Icon(Icons.folder_outlined),
-                    ),
-                  ],
-                  selected: {_library},
-                  onSelectionChanged: (values) {
-                    setState(() {
-                      _library = values.single;
-                      _selecting = false;
-                      _selected.clear();
-                    });
-                    if (_library) _reload();
-                  },
-                ),
-                const SizedBox(height: 12),
-                SearchBar(
-                  controller: _search,
-                  leading: const Icon(Icons.search),
-                  hintText: AppTranslations.text(context, '搜索任务或本地漫画'),
-                  trailing: [
-                    if (_query.isNotEmpty)
-                      IconButton(
-                        tooltip: AppTranslations.text(context, '清空搜索'),
-                        onPressed: () => setState(() {
-                          _query = '';
-                          _search.clear();
-                          _selected.clear();
-                        }),
-                        icon: const Icon(Icons.clear),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() {
-                    _query = v;
-                    _selected.clear();
-                  }),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    TextButton.icon(
-                      onPressed: _busy ? null : _bulkAdd,
-                      icon: const Icon(Icons.playlist_add, size: 18),
-                      label: const AppText('批量下载编号'),
-                    ),
-                    TextButton.icon(
-                      onPressed: _busy ? null : _import,
-                      icon: const Icon(
-                        Icons.create_new_folder_outlined,
-                        size: 18,
-                      ),
-                      label: const AppText('导入本地目录'),
-                    ),
-                  ],
-                ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    if (_library) ...[
-                      ActionChip(
-                        avatar: const Icon(Icons.sort_by_alpha, size: 18),
-                        label: AppText(_descending ? '标题降序' : '标题升序'),
-                        onPressed: () =>
-                            setState(() => _descending = !_descending),
-                      ),
-                      if (!_selecting)
-                        TextButton.icon(
-                          onPressed: () => setState(() => _selecting = true),
-                          icon: const Icon(Icons.checklist),
-                          label: const AppText('选择'),
-                        ),
-                    ] else ...[
-                      ActionChip(
-                        avatar: const Icon(Icons.filter_list, size: 18),
-                        label: AppText(
-                          _state == 'all' ? '全部状态' : jobLabels[_state]!,
-                        ),
-                        onPressed: _statusSheet,
-                      ),
-                      TextButton(
-                        onPressed: running + waiting == 0
-                            ? null
-                            : () {
-                                for (final job in queue.jobs.values.toList()) {
-                                  queue.pause(job.id);
-                                }
-                              },
-                        child: const AppText('全部暂停'),
-                      ),
-                      TextButton(
-                        onPressed:
-                            !queue.jobs.values.any(
-                              (j) => ['paused', 'failed'].contains(j.state),
-                            )
-                            ? null
-                            : () {
-                                for (final job in queue.jobs.values.toList()) {
-                                  if ([
-                                    'paused',
-                                    'failed',
-                                  ].contains(job.state)) {
-                                    queue.resume(job.id);
-                                  }
-                                }
-                              },
-                        child: const AppText('全部继续'),
+                      AppText(
+                        _library
+                            ? '${_chapters.map((c) => c.comic.key).toSet().length} 本 · ${_chapters.length} 章 · ${(_bytes / 1048576).toStringAsFixed(1)} MB'
+                            : '${queue.jobs.length} 章 · 进行中 $running · 等待 $waiting',
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
-                  ],
+                  ),
                 ),
-                if (_available != null)
-                  AppText(
-                    '设备可用 ${(_available! / 1073741824).toStringAsFixed(1)} GB · 下载占用 ${(_bytes / 1048576).toStringAsFixed(1)} MB',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                if (running + waiting > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: AppText(
-                      '下载期间请保持应用在前台；后台或系统回收可能中断，下次打开可恢复',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
-                if (_busy)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: LinearProgressIndicator(),
-                  ),
-                if (_operationStatus != null) AppText(_operationStatus!),
-                if (queue.persistenceError != null)
-                  AppText(queue.persistenceError!),
+                IconButton(
+                  tooltip: AppTranslations.text(context, '下载设置'),
+                  onPressed: _busy ? null : _settings,
+                  icon: const Icon(Icons.settings_outlined),
+                ),
               ],
             ),
-            slivers: [
-              if (rows.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: AppStatus(
-                    icon: _library
-                        ? Icons.offline_pin_outlined
-                        : Icons.download_outlined,
-                    title: _query.isNotEmpty || !_library && _state != 'all'
-                        ? '没有匹配内容'
-                        : _library
-                        ? '暂无已下载章节'
-                        : '暂无下载任务',
-                    message: _library
-                        ? '在作品详情下载，或导入设备内图片目录'
-                        : '从作品详情选章下载，任务会显示在这里',
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList.separated(
-                    itemCount: rows.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final row = rows[index],
-                          chapter = row.offline,
-                          job = row.job;
-                      if (row.book.startsWith('__source_')) {
-                        return SourceSection(
-                          ContentSource.parse(row.book.substring(9)),
-                        );
-                      }
-                      if (chapter != null) {
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 20),
-                          child: Card(
-                            child: ListTile(
-                              leading: const Icon(Icons.menu_book_outlined),
-                              trailing: _selecting
-                                  ? Checkbox(
-                                      value: _selected.contains(_key(chapter)),
-                                      onChanged: (_) => _toggle(_key(chapter)),
-                                    )
-                                  : null,
-                              title: Text(chapter.chapter.title),
-                              subtitle: AppText('${chapter.count} 页 · 离线可读'),
-                              onLongPress: () => setState(() {
-                                _selecting = true;
-                                _selected.add(_key(chapter));
-                              }),
-                              onTap: () => _selecting
-                                  ? _toggle(_key(chapter))
-                                  : openChapter(
-                                      context,
-                                      session,
-                                      chapter.comic,
-                                      chapter.chapter,
-                                    ),
-                            ),
-                          ),
-                        );
-                      }
-                      if (job != null) {
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 20),
-                          child: Card(
-                            child: ListTile(
-                              title: Text(job.chapter.title),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  AppText(
-                                    '${jobLabels[job.state] ?? job.state} · ${job.done}/${job.total}${job.attempts > 0 ? ' · 重试 ${job.attempts}' : ''}',
-                                  ),
-                                  if (job.total > 0)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 6),
-                                      child: LinearProgressIndicator(
-                                        value: job.done / job.total,
-                                      ),
-                                    ),
-                                  if (job.error.isNotEmpty) AppText(job.error),
-                                ],
-                              ),
-                              trailing: AppActionMenu(
-                                actions: [
-                                  if (['queued', 'running'].contains(job.state))
-                                    AppMenuAction(
-                                      '暂停',
-                                      Icons.pause,
-                                      () => queue.pause(job.id),
-                                    ),
-                                  if ([
-                                    'paused',
-                                    'failed',
-                                    'cancelled',
-                                  ].contains(job.state))
-                                    AppMenuAction(
-                                      '继续 / 重试',
-                                      Icons.play_arrow,
-                                      () => queue.resume(job.id),
-                                    ),
-                                  if (job.state != 'done')
-                                    AppMenuAction(
-                                      '取消任务',
-                                      Icons.cancel_outlined,
-                                      () => queue.cancel(job.id),
-                                    ),
-                                  AppMenuAction(
-                                    '移除记录（保留图片）',
-                                    Icons.playlist_remove,
-                                    () => queue.remove(job.id),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      final local = offlineGroups[row.book];
-                      final tasks = jobGroups[row.book];
-                      final comic = _library
-                          ? local!.first.comic
-                          : tasks!.first.comic;
-                      final total =
-                          tasks?.fold(0, (sum, j) => sum + j.total) ?? 0;
-                      final done =
-                          tasks?.fold(0, (sum, j) => sum + j.done) ?? 0;
-                      final expanded = _expanded.contains(
-                        '${_library ? 'offline' : 'jobs'}:${row.book}',
-                      );
-                      return LibraryBookTile(
-                        comic: comic,
-                        imageHost: session.imageHostFor(comic),
-                        selected: _library && _selecting
-                            ? local!.every((c) => _selected.contains(_key(c)))
-                            : null,
-                        onSelect: (_) => setState(() {
-                          final keys = local!.map(_key).toList();
-                          if (keys.every(_selected.contains)) {
-                            _selected.removeAll(keys);
-                          } else {
-                            _selected.addAll(keys);
-                          }
-                        }),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            AppText(
-                              _library
-                                  ? '${local!.length} 章已下载'
-                                  : '${tasks!.where((j) => j.state == 'done').length}/${tasks.length} 章已完成',
-                            ),
-                            if (!_library)
-                              Text(
-                                [
-                                  for (final state in [
-                                    'running',
-                                    'queued',
-                                    'failed',
-                                    'paused',
-                                    'cancelled',
-                                  ])
-                                    if (tasks!.any((job) => job.state == state))
-                                      '${AppTranslations.text(context, jobLabels[state]!)} ${tasks.where((job) => job.state == state).length}',
-                                ].join(' · '),
-                                style: Theme.of(context).textTheme.labelSmall,
-                              ),
-                            if (!_library)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: LinearProgressIndicator(
-                                  value: total == 0
-                                      ? 0
-                                      : (done / total).clamp(0, 1),
-                                ),
-                              ),
-                          ],
-                        ),
-                        trailing: Icon(
-                          expanded ? Icons.expand_less : Icons.expand_more,
-                        ),
-                        onLongPress: !_library
-                            ? null
-                            : () => setState(() {
-                                _selecting = true;
-                                _selected.addAll(local!.map(_key));
-                              }),
-                        onTap: () => _expand(row.book),
-                      );
-                    },
-                  ),
+            const SizedBox(height: 16),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(
+                  value: false,
+                  label: AppText('下载任务'),
+                  icon: Icon(Icons.downloading_outlined),
                 ),
-            ],
-          ),
-        ),
-        LibrarySelectionBar(
-          visible: _library && _selecting,
-          count: _selected.length,
-          onDone: () => setState(() {
-            _selecting = false;
-            _selected.clear();
-          }),
-          actions: [
-            TextButton(
-              onPressed: _busy
-                  ? null
-                  : () => setState(() => _selected.addAll(chapters.map(_key))),
-              child: const AppText('全选'),
+                ButtonSegment(
+                  value: true,
+                  label: AppText('本地书库'),
+                  icon: Icon(Icons.folder_outlined),
+                ),
+              ],
+              selected: {_library},
+              onSelectionChanged: (values) {
+                setState(() {
+                  _library = values.single;
+                  _selecting = false;
+                  _selected.clear();
+                });
+                if (_library) _reload();
+              },
             ),
-            TextButton(
-              onPressed: _selected.isEmpty || _busy ? null : _export,
-              child: const AppText('导出选中'),
+            const SizedBox(height: 12),
+            SearchBar(
+              controller: _search,
+              leading: const Icon(Icons.search),
+              hintText: AppTranslations.text(context, '搜索任务或本地漫画'),
+              trailing: [
+                if (_query.isNotEmpty)
+                  IconButton(
+                    tooltip: AppTranslations.text(context, '清空搜索'),
+                    onPressed: () => setState(() {
+                      _query = '';
+                      _search.clear();
+                      _selected.clear();
+                    }),
+                    icon: const Icon(Icons.clear),
+                  ),
+              ],
+              onChanged: (v) => setState(() {
+                _query = v;
+                _selected.clear();
+              }),
             ),
-            TextButton(
-              onPressed: _selected.isEmpty || _busy ? null : _deleteSelected,
-              child: const AppText('删除文件'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: _busy ? null : _bulkAdd,
+                  icon: const Icon(Icons.playlist_add, size: 18),
+                  label: const AppText('批量下载编号'),
+                ),
+                TextButton.icon(
+                  onPressed: _busy ? null : _import,
+                  icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+                  label: const AppText('导入本地目录'),
+                ),
+              ],
             ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (_library) ...[
+                  ActionChip(
+                    avatar: const Icon(Icons.sort_by_alpha, size: 18),
+                    label: AppText(_descending ? '标题降序' : '标题升序'),
+                    onPressed: () => setState(() => _descending = !_descending),
+                  ),
+                  if (!_selecting)
+                    TextButton.icon(
+                      onPressed: () => setState(() => _selecting = true),
+                      icon: const Icon(Icons.checklist),
+                      label: const AppText('选择'),
+                    ),
+                ] else ...[
+                  ActionChip(
+                    avatar: const Icon(Icons.filter_list, size: 18),
+                    label: AppText(
+                      _state == 'all' ? '全部状态' : jobLabels[_state]!,
+                    ),
+                    onPressed: _statusSheet,
+                  ),
+                  TextButton(
+                    onPressed: running + waiting == 0
+                        ? null
+                        : () {
+                            for (final job in queue.jobs.values.toList()) {
+                              queue.pause(job.id);
+                            }
+                          },
+                    child: const AppText('全部暂停'),
+                  ),
+                  TextButton(
+                    onPressed:
+                        !queue.jobs.values.any(
+                          (j) => ['paused', 'failed'].contains(j.state),
+                        )
+                        ? null
+                        : () {
+                            for (final job in queue.jobs.values.toList()) {
+                              if (['paused', 'failed'].contains(job.state)) {
+                                queue.resume(job.id);
+                              }
+                            }
+                          },
+                    child: const AppText('全部继续'),
+                  ),
+                ],
+              ],
+            ),
+            if (_available != null)
+              AppText(
+                '设备可用 ${(_available! / 1073741824).toStringAsFixed(1)} GB · 下载占用 ${(_bytes / 1048576).toStringAsFixed(1)} MB',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            if (running + waiting > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: AppText(
+                  '下载期间请保持应用在前台；后台或系统回收可能中断，下次打开可恢复',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            if (_busy)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: LinearProgressIndicator(),
+              ),
+            if (_operationStatus != null) AppText(_operationStatus!),
+            if (queue.persistenceError != null)
+              AppText(queue.persistenceError!),
           ],
         ),
-      ],
+        slivers: [
+          if (rows.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: AppStatus(
+                icon: _library
+                    ? Icons.offline_pin_outlined
+                    : Icons.download_outlined,
+                title: _query.isNotEmpty || !_library && _state != 'all'
+                    ? '没有匹配内容'
+                    : _library
+                    ? '暂无已下载章节'
+                    : '暂无下载任务',
+                message: _library ? '在作品详情下载，或导入设备内图片目录' : '从作品详情选章下载，任务会显示在这里',
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.separated(
+                itemCount: rows.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final row = rows[index], chapter = row.offline, job = row.job;
+                  if (row.book.startsWith('__source_')) {
+                    return SourceSection(
+                      ContentSource.parse(row.book.substring(9)),
+                    );
+                  }
+                  if (chapter != null) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.menu_book_outlined),
+                          trailing: _selecting
+                              ? Checkbox(
+                                  value: _selected.contains(_key(chapter)),
+                                  onChanged: (_) => _toggle(_key(chapter)),
+                                )
+                              : null,
+                          title: Text(chapter.chapter.title),
+                          subtitle: AppText('${chapter.count} 页 · 离线可读'),
+                          onLongPress: () => setState(() {
+                            _selecting = true;
+                            _selected.add(_key(chapter));
+                          }),
+                          onTap: () => _selecting
+                              ? _toggle(_key(chapter))
+                              : openChapter(
+                                  context,
+                                  session,
+                                  chapter.comic,
+                                  chapter.chapter,
+                                ),
+                        ),
+                      ),
+                    );
+                  }
+                  if (job != null) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Card(
+                        child: ListTile(
+                          title: Text(job.chapter.title),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppText(
+                                '${jobLabels[job.state] ?? job.state} · ${job.done}/${job.total}${job.attempts > 0 ? ' · 重试 ${job.attempts}' : ''}',
+                              ),
+                              if (job.total > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: LinearProgressIndicator(
+                                    value: job.done / job.total,
+                                  ),
+                                ),
+                              if (job.error.isNotEmpty) AppText(job.error),
+                            ],
+                          ),
+                          trailing: AppActionMenu(
+                            actions: [
+                              if (['queued', 'running'].contains(job.state))
+                                AppMenuAction(
+                                  '暂停',
+                                  Icons.pause,
+                                  () => queue.pause(job.id),
+                                ),
+                              if ([
+                                'paused',
+                                'failed',
+                                'cancelled',
+                              ].contains(job.state))
+                                AppMenuAction(
+                                  '继续 / 重试',
+                                  Icons.play_arrow,
+                                  () => queue.resume(job.id),
+                                ),
+                              if (job.state != 'done')
+                                AppMenuAction(
+                                  '取消任务',
+                                  Icons.cancel_outlined,
+                                  () => queue.cancel(job.id),
+                                ),
+                              AppMenuAction(
+                                '移除记录（保留图片）',
+                                Icons.playlist_remove,
+                                () => queue.remove(job.id),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  final local = offlineGroups[row.book];
+                  final tasks = jobGroups[row.book];
+                  final comic = _library
+                      ? local!.first.comic
+                      : tasks!.first.comic;
+                  final total = tasks?.fold(0, (sum, j) => sum + j.total) ?? 0;
+                  final done = tasks?.fold(0, (sum, j) => sum + j.done) ?? 0;
+                  final expanded = _expanded.contains(
+                    '${_library ? 'offline' : 'jobs'}:${row.book}',
+                  );
+                  return LibraryBookTile(
+                    comic: comic,
+                    imageHost: session.imageHostFor(comic),
+                    selected: _library && _selecting
+                        ? local!.every((c) => _selected.contains(_key(c)))
+                        : null,
+                    onSelect: (_) => setState(() {
+                      final keys = local!.map(_key).toList();
+                      if (keys.every(_selected.contains)) {
+                        _selected.removeAll(keys);
+                      } else {
+                        _selected.addAll(keys);
+                      }
+                    }),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppText(
+                          _library
+                              ? '${local!.length} 章已下载'
+                              : '${tasks!.where((j) => j.state == 'done').length}/${tasks.length} 章已完成',
+                        ),
+                        if (!_library)
+                          Text(
+                            [
+                              for (final state in [
+                                'running',
+                                'queued',
+                                'failed',
+                                'paused',
+                                'cancelled',
+                              ])
+                                if (tasks!.any((job) => job.state == state))
+                                  '${AppTranslations.text(context, jobLabels[state]!)} ${tasks.where((job) => job.state == state).length}',
+                            ].join(' · '),
+                            style: Theme.of(context).textTheme.labelSmall,
+                          ),
+                        if (!_library)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: LinearProgressIndicator(
+                              value: total == 0
+                                  ? 0
+                                  : (done / total).clamp(0, 1),
+                            ),
+                          ),
+                      ],
+                    ),
+                    trailing: Icon(
+                      expanded ? Icons.expand_less : Icons.expand_more,
+                    ),
+                    onLongPress: !_library
+                        ? null
+                        : () => setState(() {
+                            _selecting = true;
+                            _selected.addAll(local!.map(_key));
+                          }),
+                    onTap: () => _expand(row.book),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+      selectionBar: LibrarySelectionBar(
+        visible: _library && _selecting,
+        count: _selected.length,
+        onDone: () => setState(() {
+          _selecting = false;
+          _selected.clear();
+        }),
+        actions: [
+          TextButton(
+            onPressed: _busy
+                ? null
+                : () => setState(() => _selected.addAll(chapters.map(_key))),
+            child: const AppText('全选'),
+          ),
+          TextButton(
+            onPressed: _selected.isEmpty || _busy ? null : _export,
+            child: const AppText('导出选中'),
+          ),
+          TextButton(
+            onPressed: _selected.isEmpty || _busy ? null : _deleteSelected,
+            child: const AppText('删除文件'),
+          ),
+        ],
+      ),
     );
   }
 }

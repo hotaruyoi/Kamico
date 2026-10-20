@@ -26,9 +26,9 @@ The adapted implementation is distributed with the upstream LGPL v3 terms. Prese
 - Author/project: tonquer / https://github.com/tonquer/picacg-qt
 - Local source snapshot: `../picacg-qt-main`; the original Qt project is retained unchanged.
 - Protocol references: `src/tools/tool.py`, `src/server/req.py`, `src/config/config.py`, `src/tools/book.py` and `src/tools/user.py`.
-- Original license text is preserved verbatim in `third_party/picacg.LICENSE` and shown in the application's license registry.
+- Original license text is preserved verbatim in `third_party/picacg.LICENSE`. It is identical to `LICENSE`, so the application displays one shared LGPL text with both source attributions.
 - Changes: Dart implementation of PicACG request signing, authentication, pagination and media resolution, integrated into kamico's existing Flutter comic workflow. No Qt UI, Python runtime, chat, games, super-resolution or proxy stack is bundled.
 
 ## Flutter and Dart packages
 
-Runtime dependency versions are recorded in `pubspec.lock`. Flutter's license registry includes package license notices, and the Settings screen exposes the license page. Additional notices above are registered by `lib/main.dart`.
+Runtime dependency versions are recorded in `pubspec.lock`. Settings exposes notices for runtime packages, engine components and the adaptations above. Development-only dependency names and the duplicate root-package entry are omitted from the display; notices shared with runtime packages are retained. The full generated NOTICES asset remains bundled. Application notices are registered by `lib/main.dart` via `lib/data/app_licenses.dart`.
