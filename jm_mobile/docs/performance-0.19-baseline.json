@@ -1,0 +1,295 @@
+{
+  "phase": "baseline",
+  "mode": "debug",
+  "scenario": "cached discovery: 2 warmup swipes, 8 alternating 600px/800ms swipes",
+  "traceEventCount": 32617,
+  "durationGroups": [
+    {
+      "totalMs": 2562.09,
+      "name": "PipelineItem",
+      "stats": {
+        "maxMs": 24.793,
+        "p50ms": 13.923,
+        "p95ms": 21.792,
+        "over16ms": 41,
+        "count": 173
+      }
+    },
+    {
+      "totalMs": 2560.37,
+      "name": "PipelineProduce",
+      "stats": {
+        "maxMs": 24.782,
+        "p50ms": 13.913,
+        "p95ms": 21.781,
+        "over16ms": 41,
+        "count": 173
+      }
+    },
+    {
+      "totalMs": 2447.32,
+      "name": "Frame",
+      "stats": {
+        "maxMs": 24.107,
+        "p50ms": 13.278,
+        "p95ms": 21.119,
+        "over16ms": 35,
+        "count": 173
+      }
+    },
+    {
+      "totalMs": 2237.6,
+      "name": "Animator::BeginFrame",
+      "stats": {
+        "maxMs": 24.806,
+        "p50ms": 14.014,
+        "p95ms": 22.311,
+        "over16ms": 35,
+        "count": 151
+      }
+    },
+    {
+      "totalMs": 2057.17,
+      "name": "LAYOUT (root)",
+      "stats": {
+        "maxMs": 22.089,
+        "p50ms": 10.888,
+        "p95ms": 17.976,
+        "over16ms": 18,
+        "count": 173
+      }
+    },
+    {
+      "totalMs": 2056.5,
+      "name": "LAYOUT",
+      "stats": {
+        "maxMs": 22.086,
+        "p50ms": 10.887,
+        "p95ms": 17.97,
+        "over16ms": 18,
+        "count": 173
+      }
+    },
+    {
+      "totalMs": 1878.9,
+      "name": "BUILD",
+      "stats": {
+        "maxMs": 12.305,
+        "p50ms": 0.042,
+        "p95ms": 2.109,
+        "over16ms": 0,
+        "count": 4640
+      }
+    },
+    {
+      "totalMs": 481.15,
+      "name": "SceneDisplayLag",
+      "stats": {
+        "maxMs": 11.998,
+        "p50ms": 1.924,
+        "p95ms": 7.924,
+        "over16ms": 0,
+        "count": 172
+      }
+    },
+    {
+      "totalMs": 397.51,
+      "name": "GPURasterizer::Draw",
+      "stats": {
+        "maxMs": 4.596,
+        "p50ms": 2.179,
+        "p95ms": 3.375,
+        "over16ms": 0,
+        "count": 174
+      }
+    },
+    {
+      "totalMs": 395.92,
+      "name": "Rasterizer::DoDraw",
+      "stats": {
+        "maxMs": 4.588,
+        "p50ms": 2.17,
+        "p95ms": 3.365,
+        "over16ms": 0,
+        "count": 174
+      }
+    },
+    {
+      "totalMs": 393.51,
+      "name": "Rasterizer::DrawToSurfaces",
+      "stats": {
+        "maxMs": 4.577,
+        "p50ms": 2.158,
+        "p95ms": 3.346,
+        "over16ms": 0,
+        "count": 174
+      }
+    },
+    {
+      "totalMs": 317.35,
+      "name": "SurfaceFrame::Submit",
+      "stats": {
+        "maxMs": 4.146,
+        "p50ms": 1.728,
+        "p95ms": 2.805,
+        "over16ms": 0,
+        "count": 174
+      }
+    },
+    {
+      "totalMs": 313.56,
+      "name": "Animate",
+      "stats": {
+        "maxMs": 18.906,
+        "p50ms": 0.02,
+        "p95ms": 12.963,
+        "over16ms": 6,
+        "count": 173
+      }
+    },
+    {
+      "totalMs": 298.91,
+      "name": "PAINT (root)",
+      "stats": {
+        "maxMs": 4.585,
+        "p50ms": 1.667,
+        "p95ms": 2.369,
+        "over16ms": 0,
+        "count": 174
+      }
+    },
+    {
+      "totalMs": 298.22,
+      "name": "PAINT",
+      "stats": {
+        "maxMs": 4.582,
+        "p50ms": 1.665,
+        "p95ms": 2.365,
+        "over16ms": 0,
+        "count": 174
+      }
+    },
+    {
+      "totalMs": 228.23,
+      "name": "SurfaceFrame::Encode",
+      "stats": {
+        "maxMs": 3.834,
+        "p50ms": 1.272,
+        "p95ms": 2.123,
+        "over16ms": 0,
+        "count": 174
+      }
+    },
+    {
+      "totalMs": 194.76,
+      "name": "DefaultPointerDataDispatcher::DispatchPacket",
+      "stats": {
+        "maxMs": 1.669,
+        "p50ms": 0.33,
+        "p95ms": 0.657,
+        "over16ms": 0,
+        "count": 531
+      }
+    },
+    {
+      "totalMs": 180.07,
+      "name": "RuntimeController::DispatchPointerDataPacket",
+      "stats": {
+        "maxMs": 1.567,
+        "p50ms": 0.303,
+        "p95ms": 0.638,
+        "over16ms": 0,
+        "count": 531
+      }
+    },
+    {
+      "totalMs": 133.64,
+      "name": "Engine::DispatchPointerDataPacket",
+      "stats": {
+        "maxMs": 1.675,
+        "p50ms": 0.302,
+        "p95ms": 0.747,
+        "over16ms": 0,
+        "count": 380
+      }
+    },
+    {
+      "totalMs": 127.76,
+      "name": "ConcurrentMark",
+      "stats": {
+        "maxMs": 44.824,
+        "p50ms": 37.73,
+        "p95ms": 44.311,
+        "over16ms": 3,
+        "count": 5
+      }
+    },
+    {
+      "totalMs": 83.03,
+      "name": "FINALIZE TREE",
+      "stats": {
+        "maxMs": 1.68,
+        "p50ms": 0.434,
+        "p95ms": 0.722,
+        "over16ms": 0,
+        "count": 174
+      }
+    },
+    {
+      "totalMs": 71.9,
+      "name": "BeginFrame idle callback",
+      "stats": {
+        "maxMs": 6.078,
+        "p50ms": 0.013,
+        "p95ms": 4.6,
+        "over16ms": 0,
+        "count": 78
+      }
+    },
+    {
+      "totalMs": 71.35,
+      "name": "NotifyIdle",
+      "stats": {
+        "maxMs": 6.069,
+        "p50ms": 0.005,
+        "p95ms": 4.586,
+        "over16ms": 0,
+        "count": 80
+      }
+    },
+    {
+      "totalMs": 54.95,
+      "name": "Scavenge",
+      "stats": {
+        "maxMs": 4.217,
+        "p50ms": 1.738,
+        "p95ms": 3.221,
+        "over16ms": 0,
+        "count": 27
+      }
+    },
+    {
+      "totalMs": 46.22,
+      "name": "COMPOSITING",
+      "stats": {
+        "maxMs": 0.727,
+        "p50ms": 0.254,
+        "p95ms": 0.339,
+        "over16ms": 0,
+        "count": 174
+      }
+    }
+  ],
+  "memoryBefore": {
+    "type": "MemoryUsage",
+    "heapUsage": 129979344,
+    "heapCapacity": 136667136,
+    "externalUsage": 74592
+  },
+  "memoryAfter": {
+    "type": "MemoryUsage",
+    "heapUsage": 125040432,
+    "heapCapacity": 129851392,
+    "externalUsage": 72384
+  }
+}

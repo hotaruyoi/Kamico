@@ -1,0 +1,15 @@
+{
+  "mode": "debug",
+  "scenario": "real detail after artwork and metadata load; VM temporary references compared using object identityHashCode",
+  "rawImagesWithImage": 15,
+  "sharedFrameGroups": [
+    {
+      "rawImageCount": 2,
+      "imageClass": "Image",
+      "fits": [
+        "fitWidth",
+        "cover"
+      ]
+    }
+  ]
+}

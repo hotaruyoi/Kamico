@@ -1,0 +1,498 @@
+{
+  "date": "2026-10-19",
+  "scope": "cleanup only; keep all build and dependency caches",
+  "protected": [
+    "build",
+    ".dart_tool",
+    "android/.gradle",
+    "android/.kotlin",
+    "windows/flutter/ephemeral"
+  ],
+  "delete": [
+    {
+      "path": "docs/previews/0.14.0",
+      "directory": true,
+      "files": 17,
+      "bytes": 886292.0
+    },
+    {
+      "path": "docs/previews/0.8.0",
+      "directory": true,
+      "files": 13,
+      "bytes": 636921.0
+    },
+    {
+      "path": "docs/previews/0.9.0",
+      "directory": true,
+      "files": 16,
+      "bytes": 795850.0
+    },
+    {
+      "path": "lib/data/web_portal.dart",
+      "directory": false,
+      "files": 1,
+      "bytes": 6687.0
+    },
+    {
+      "path": "lib/ui/long_image_page.dart",
+      "directory": false,
+      "files": 1,
+      "bytes": 1882.0
+    },
+    {
+      "path": "releases/0.1.0",
+      "directory": true,
+      "files": 2,
+      "bytes": 89669608.0
+    },
+    {
+      "path": "releases/0.10.0",
+      "directory": true,
+      "files": 7,
+      "bytes": 93786699.0
+    },
+    {
+      "path": "releases/0.11.0",
+      "directory": true,
+      "files": 7,
+      "bytes": 93812139.0
+    },
+    {
+      "path": "releases/0.12.0",
+      "directory": true,
+      "files": 7,
+      "bytes": 93835993.0
+    },
+    {
+      "path": "releases/0.13.0",
+      "directory": true,
+      "files": 7,
+      "bytes": 93850234.0
+    },
+    {
+      "path": "releases/0.14.0",
+      "directory": true,
+      "files": 10,
+      "bytes": 94679736.0
+    },
+    {
+      "path": "releases/0.17.0/app-arm64-release-analysis.apk",
+      "directory": false,
+      "files": 1,
+      "bytes": 22452162.0
+    },
+    {
+      "path": "releases/0.2.0",
+      "directory": true,
+      "files": 2,
+      "bytes": 89707512.0
+    },
+    {
+      "path": "releases/0.3.0",
+      "directory": true,
+      "files": 3,
+      "bytes": 89751382.0
+    },
+    {
+      "path": "releases/0.4.0",
+      "directory": true,
+      "files": 3,
+      "bytes": 89857403.0
+    },
+    {
+      "path": "releases/0.5.0",
+      "directory": true,
+      "files": 3,
+      "bytes": 89913928.0
+    },
+    {
+      "path": "releases/0.6.0",
+      "directory": true,
+      "files": 3,
+      "bytes": 90664731.0
+    },
+    {
+      "path": "releases/0.7.0",
+      "directory": true,
+      "files": 4,
+      "bytes": 92450310.0
+    },
+    {
+      "path": "releases/0.8.0",
+      "directory": true,
+      "files": 6,
+      "bytes": 93037801.0
+    },
+    {
+      "path": "releases/0.9.0",
+      "directory": true,
+      "files": 8,
+      "bytes": 93768132.0
+    },
+    {
+      "path": "tool/account-repair-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 562.0
+    },
+    {
+      "path": "tool/baseline15",
+      "directory": true,
+      "files": 0,
+      "bytes": null
+    },
+    {
+      "path": "tool/check_web.dart",
+      "directory": false,
+      "files": 1,
+      "bytes": 378.0
+    },
+    {
+      "path": "tool/continuity-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 804.0
+    },
+    {
+      "path": "tool/discovery-repair-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 2793.0
+    },
+    {
+      "path": "tool/perf17-after.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 895.0
+    },
+    {
+      "path": "tool/perf17-analyze.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 98.0
+    },
+    {
+      "path": "tool/perf17-before.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 4184.0
+    },
+    {
+      "path": "tool/perf17-cover-before.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 2665.0
+    },
+    {
+      "path": "tool/perf17-full-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 13562.0
+    },
+    {
+      "path": "tool/repair-analyze.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 98.0
+    },
+    {
+      "path": "tool/repair-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 8933.0
+    },
+    {
+      "path": "tool/repair3-analyze.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 98.0
+    },
+    {
+      "path": "tool/repair3-fix.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 315.0
+    },
+    {
+      "path": "tool/repair3-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 9361.0
+    },
+    {
+      "path": "tool/repair4-analyze.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 98.0
+    },
+    {
+      "path": "tool/repair4-fix.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 157.0
+    },
+    {
+      "path": "tool/repair4-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 9962.0
+    },
+    {
+      "path": "tool/repair5-analyze.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 98.0
+    },
+    {
+      "path": "tool/repair5-fix.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 182.0
+    },
+    {
+      "path": "tool/repair5-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 10095.0
+    },
+    {
+      "path": "tool/repair6-analyze.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 98.0
+    },
+    {
+      "path": "tool/repair6-fix.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 228.0
+    },
+    {
+      "path": "tool/repair6-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 11666.0
+    },
+    {
+      "path": "tool/translation_0_8.txt",
+      "directory": false,
+      "files": 1,
+      "bytes": 1430.0
+    },
+    {
+      "path": "tool/translation_0_9.txt",
+      "directory": false,
+      "files": 1,
+      "bytes": 362.0
+    },
+    {
+      "path": "tool/translation_additions.txt",
+      "directory": false,
+      "files": 1,
+      "bytes": 11534.0
+    },
+    {
+      "path": "tool/translation_repair.txt",
+      "directory": false,
+      "files": 1,
+      "bytes": 5998.0
+    },
+    {
+      "path": "tool/ui15-analyze.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 98.0
+    },
+    {
+      "path": "tool/ui15-detail-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 1538.0
+    },
+    {
+      "path": "tool/ui15-fix.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 400.0
+    },
+    {
+      "path": "tool/ui15-full-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 13400.0
+    },
+    {
+      "path": "tool/ui15-interaction-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 535.0
+    },
+    {
+      "path": "tool/ui15-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 90908.0
+    },
+    {
+      "path": "tool/ui15-visual-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 2787.0
+    },
+    {
+      "path": "tool/ui16-analyze.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 98.0
+    },
+    {
+      "path": "tool/ui16-dart-fix.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 723.0
+    },
+    {
+      "path": "tool/ui16-full-test.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 12981.0
+    },
+    {
+      "path": "tool/ui16-layout-tests.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 3621.0
+    },
+    {
+      "path": "tool/ui16-native-compile.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 7282.0
+    },
+    {
+      "path": "tool/ui16-pdf-reader-tests.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 1705.0
+    },
+    {
+      "path": "tool/ui16-refinement-tests.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 3107.0
+    },
+    {
+      "path": "tool/ui16-tests.log",
+      "directory": false,
+      "files": 1,
+      "bytes": 17721.0
+    }
+  ],
+  "retainedArtifacts": [
+    {
+      "path": "releases/0.15.0/app-arm64-debug.apk",
+      "bytes": 92291984,
+      "sha256": "D9EB843659CCC213A72E4AD35B3EEF715295CA9B3DABDDF3E9B69FF2D3E55AB6"
+    },
+    {
+      "path": "releases/0.15.0/source.zip",
+      "bytes": 3511531,
+      "sha256": "609F53E867477B141EF77CD207A28D9145E7549D3E9E30FED04441891CCC6A0B"
+    },
+    {
+      "path": "releases/0.16.0/app-arm64-debug.apk",
+      "bytes": 92311683,
+      "sha256": "600F430871C1B17DA3F0534A1DE11C95A261B5FB8516E6E2781D9458FECED1CF"
+    },
+    {
+      "path": "releases/0.16.0/source.zip",
+      "bytes": 4799927,
+      "sha256": "321E1E0AF6B37CBE8A3DC28D47FC6582BAEFEA1FA38F7BB4E949B41059413AB7"
+    },
+    {
+      "path": "releases/0.17.0/app-arm64-debug.apk",
+      "bytes": 92317167,
+      "sha256": "17BD38AF7A340FAEE6DEC38DC4B1E35014ED7F8C17E60368FDE1BDB1F7AC1027"
+    },
+    {
+      "path": "releases/0.17.0/app-arm64-release.apk",
+      "bytes": 21075906,
+      "sha256": "D1B0808C4098577173C1E0964FD8B705D2DFCE9C491EB649BAA909CD0D2CAC58"
+    },
+    {
+      "path": "releases/0.17.0/source.zip",
+      "bytes": 6065354,
+      "sha256": "82976D90B26DE04054465BFC2C26DFFD5915C0C09E72F3F014E7B81EAF24E5C9"
+    }
+  ],
+  "unchangedConfiguration": [
+    {
+      "path": "pubspec.yaml",
+      "sha256": "C4A603001422E1297D5762104AE3A635490561FB7F6F3D0AFD3CAC6EC709D56B"
+    },
+    {
+      "path": "pubspec.lock",
+      "sha256": "2659B783460AE8C91433F55B289AFEC654B24E8496A11E53DFF78FD62BCD1F09"
+    },
+    {
+      "path": "android/local.properties",
+      "sha256": "7AE71E91C99376531DCA77EFE9223FF7CFD595DEFB21357C1FD199A536A67299"
+    },
+    {
+      "path": "android/gradle.properties",
+      "sha256": "F916EEF13D7BD25E78BC50F009DB2F00CB8B237B292E430E8097067F991D4367"
+    },
+    {
+      "path": ".dart_tool/package_config.json",
+      "sha256": "DF401C9E3C8DFEE41D85954C7F23D40ACA66DD800F542C8C877193999F035E3F"
+    },
+    {
+      "path": ".flutter-plugins-dependencies",
+      "sha256": "2F6B671599CA0209223F00CCBED591280A9A8FBBC4AA571DA519C4D5645C7EE1"
+    }
+  ],
+  "archived": [
+    {
+      "from": "docs/REPAIR_PLAN.md",
+      "to": "docs/history/REPAIR_PLAN.md"
+    },
+    {
+      "from": "docs/PRODUCT_REVIEW_0_8.md",
+      "to": "docs/history/PRODUCT_REVIEW_0_8.md"
+    },
+    {
+      "from": "docs/MIGRATION.md",
+      "to": "docs/history/MIGRATION.md"
+    },
+    {
+      "from": "docs/UI_0_8.md",
+      "to": "docs/history/UI_0_8.md"
+    },
+    {
+      "from": "docs/FEATURE_GAPS.md",
+      "to": "docs/history/FEATURE_GAPS.md"
+    },
+    {
+      "from": "docs/VALIDATION.md",
+      "to": "docs/history/VALIDATION_PRE_CLEANUP.md",
+      "replacement": "Current validation index intentionally recreated at original path"
+    },
+    {
+      "from": "docs/BATCHES.md",
+      "to": "docs/history/BATCHES.md"
+    }
+  ],
+  "verification": {
+    "deletedTargets": 63,
+    "deletedFiles": 163.0,
+    "deletedBytes": 1313818960.0,
+    "archivedDocuments": 7,
+    "retainedArtifactHashes": "unchanged",
+    "dependencyAndBuildConfigHashes": "unchanged",
+    "requiredCaches": "present",
+    "localDocumentLinks": "valid",
+    "fullTests": 86,
+    "analyze": "No issues found",
+    "kotlin": "offline incremental compilation succeeded"
+  }
+}

@@ -1,0 +1,31 @@
+# Original reference checkouts stay local; attribution is in jm_mobile/third_party.
+/JMComic-qt-main/
+/picacg-qt-main/
+
+# Generated dependencies, builds and delivery artifacts remain on disk.
+**/build/
+**/.dart_tool/
+**/.gradle/
+**/.kotlin/
+**/.cxx/
+**/ephemeral/
+**/.plugin_symlinks/
+**/__pycache__/
+/jm_mobile/releases/
+/jm_mobile/docs/previews/
+/jm_mobile/tool/baseline15/
+*.apk
+*.aab
+*.zip
+
+# Machine-specific settings and signing credentials.
+**/local.properties
+**/key.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pfx
+**/.env
+**/.env.*
+**/secrets/
+**/.idea/
