@@ -1,12 +1,12 @@
 # kamico 工作交接
 
-更新日期：2026-10-20。工作区 `D:\Projects\JMPicMerge`，客户端在 `Kamico_android/`（原 `jm_mobile/`）。已建立 **Kamico 本地 Git**，主分支为 `main`；本轮改动在 `feature+1.0.0` 分支，等待用户验收后合并，尚无远程地址，见 [REPOSITORY.md](REPOSITORY.md)。0.21.0 原交接完整保存在 [history/WORK_HANDOFF_0_21.md](history/WORK_HANDOFF_0_21.md)。
+更新日期：2026-10-20。工作区 `D:\Projects\JMPicMerge`，客户端在 `Kamico_android/`（原 `jm_mobile/`）。Git 主分支为 `main`，远程为 [hotaruyoi/Kamico](https://github.com/hotaruyoi/Kamico)。本轮 1.0.1+29 已获用户验收，`feature+1.0.0` 合并至 `main`，见 [REPOSITORY.md](REPOSITORY.md)。0.21.0 原交接完整保存在 [history/WORK_HANDOFF_0_21.md](history/WORK_HANDOFF_0_21.md)。
 
 ## 当前状态
 
-- 客户端目录已从 `jm_mobile/` 整体迁移为 `Kamico_android/`，现行文档与 Git 忽略路径已更新。源码实现、包名、签名、版本、锁文件、缓存与历史产物保留；新目录静态检查、两项合成回归和 Android 离线配置检查通过，见 [REPOSITORY.md](REPOSITORY.md)。目录迁移及 Git 流程规则保留在 `feature+1.0.0`，尚未合并 `main`。
-- 当前源码为正式版 **1.0.1+29**，按用户反馈补齐下载页选择开关、发现来源粗体标题与新图标，并修复真机阅读菜单切换引起的挖孔窗口变化；双包、真机 Profile 合成采样和安装状态见 [RELEASE_1_0_1.md](RELEASE_1_0_1.md)。静态检查无问题，150 项回归通过、1 项可选预览跳过，新旧专项 15 项通过；尚未用户验收，继续留在 `feature+1.0.0`。
-- 1.0.0+27 已实现详情排版、书架/历史选择开关与浮动操作条、发现入口拖动排序、阅读菜单覆盖层及关于/许可精简；历史交付记录见 [RELEASE_1_0.md](RELEASE_1_0.md)。当时 ADB 无设备、代理未安装的记录保留为历史事实。Git 的 `v1.0.0` 仍指向原提交，远程未配置。
+- 客户端目录已从 `jm_mobile/` 整体迁移为 `Kamico_android/`，现行文档与 Git 忽略路径已更新。源码实现、包名、签名、版本、锁文件、缓存与历史产物保留；新目录静态检查、两项合成回归和 Android 离线配置检查通过，见 [REPOSITORY.md](REPOSITORY.md)。目录迁移及 Git 流程规则随本轮验收合并至 `main`。
+- 当前源码为正式版 **1.0.1+29**，按用户反馈补齐下载页选择开关、发现来源粗体标题与新图标，并修复真机阅读菜单切换引起的挖孔窗口变化；双包、真机 Profile 合成采样和安装状态见 [RELEASE_1_0_1.md](RELEASE_1_0_1.md)。静态检查无问题，150 项回归通过、1 项可选预览跳过，新旧专项 15 项通过。用户于 2026-10-20 明确验收，产物源码为 `77afa52`，版本标签为 `v1.0.1`；后续新改动从 `main` 的 1.0.1 新建 `feature+1.0.1`。
+- 1.0.0+27 已实现详情排版、书架/历史选择开关与浮动操作条、发现入口拖动排序、阅读菜单覆盖层及关于/许可精简；历史交付记录见 [RELEASE_1_0.md](RELEASE_1_0.md)。当时 ADB 无设备、代理未安装的记录保留为历史事实。Git 的 `v1.0.0` 仍指向原提交。
 - **0.23.0 已由用户确认真机验收通过**，作为 Git 初始基线与 `baseline-0.23.0` 标签；原产物与 [UI_0_23.md](UI_0_23.md) 保留。
 - **0.22.0+25 已由用户于 2026-10-20 确认真机验收通过**。双源架构和历史验证见 [MULTI_SOURCE_0_22.md](MULTI_SOURCE_0_22.md)，对应快照保留在 `releases/0.22.0/`；当时代理 ADB 无设备及本机探测超时属于历史证据，不再作为该版待办。
 - 0.23.0 代理交付时已构建同版本 Release / Debug，包名和既有签名核验通过；静态检查无问题、135 项回归通过、1 项可选预览跳过，另 8 项专项预览通过。当时 ADB 列表为空，代理未安装；后续用户验收确认如上。合成回归不能替代真机上游可用性或真机 FPS 结论。
