@@ -1,6 +1,0 @@
-{
-  "mode": "debug",
-  "scenario": "open detail, return to discovery, reopen same detail",
-  "firstEntryAlbumRequests": 1,
-  "reentryAlbumRequests": 0
-}

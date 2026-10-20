@@ -2,6 +2,14 @@
 /JMComic-qt-main/
 /picacg-qt-main/
 
+# Local collaboration instructions, handoffs and internal evidence.
+**/AGENTS.md
+**/CLAUDE.md
+**/.codex/
+**/.claude/
+/docs/
+/Kamico_android/docs/
+
 # Generated dependencies, builds and delivery artifacts remain on disk.
 **/build/
 **/.dart_tool/
@@ -12,7 +20,6 @@
 **/.plugin_symlinks/
 **/__pycache__/
 /Kamico_android/releases/
-/Kamico_android/docs/previews/
 /Kamico_android/tool/baseline15/
 *.apk
 *.aab

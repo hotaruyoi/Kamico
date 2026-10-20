@@ -1,88 +1,25 @@
-# kamico · Flutter 客户端
+# Kamico Android
 
-独立安卓漫画客户端，当前正式版 **1.0.1+29**。支持 JM / PicACG 双源，在“我的”或发现页右上角点击圆形按钮切换；两个账号各自保持登录。本版补齐下载页选择开关，发现页显示粗体来源标题，并采用用户提供的新图标，见 [1.0.1 说明](docs/RELEASE_1_0_1.md)。
+JM / PicACG 双源 Flutter 漫画客户端，当前版本 **1.0.1+29**。
 
-本地历史、收藏、下载在原入口中按 **JM / PIC 分区**展示；从另一源打开作品不改变全局源选择，切源不暂停下载。主题与阅读设置共用，搜索记录、筛选与连接配置按源保存。已有 JM 数据与离线文件继续兼容。
+项目介绍、安装包选择、使用说明、源码构建及许可信息见仓库根目录的 [README](../README.md)。发行文件位于 [GitHub Releases](https://github.com/hotaruyoi/Kamico/releases)。
 
-历史页保留“本地历史 / 云端历史”：JM 可查询云端历史；Pic 暂无该接口，云端页说明限制并可返回本地记录。详情封面右侧以图标和粗体数字展示点赞数，缺失显示“—”；Pic 隐藏编号。
+## 常用命令
 
-外观设置支持拖动调整发现页入口顺序，两源共用并按能力显示。书架、历史的“选择”可重复点击开关，操作条浮动显示；阅读菜单覆盖在漫画上，呼出时保持阅读画面稳定。
+在本目录中执行；已有依赖时无需重新获取：
 
-0.23.0 已获用户真机验收确认，原交付记录保存在 [前版记录](docs/UI_0_23.md)。本机检查使用合成数据，不执行真实账号写操作；0.21.0 已取消的专项性能采样不恢复为待办。
-
-正式版用于用户验收，调试版用于代理获取日志和热重载，见 [双版本调试说明](docs/DEBUGGING.md)。
-
-## 常用入口
-
-- [任务交接文档](docs/WORK_HANDOFF.md)：新 Work 对话的独立接手入口，包含最终需求、当前状态、架构、构建与延期范围。
-
-- [详情工具栏设计](docs/DETAIL_TOOLBAR.md)：默认简洁、按需展开的目录搜索和样式入口。
-- [未完成事项](docs/NEXT_ITERATION.md)：后续验证及范围约定。
-- [验证入口](docs/VALIDATION.md)：当前检查和对应版本证据。
-- [性能与体积记录](docs/PERFORMANCE_0_17.md)：本机基准与实测 APK 大小。
-- [清理报告](docs/CLEANUP_REPORT.md)：删除清单、缓存保护、废弃代码和文档整理。
-- [协作规则](../AGENTS.md)：保留下来的长期规则及原因。
-
-## 安装包与保留策略
-
-- 默认同时交付 `releases/1.0.1/app-arm64-release.apk` 与 `app-arm64-debug.apk`，两者可同时安装，名称分别为 kamico 和 kamico Debug。
-- Android 7.0 / API 24 起，仅 ARM64。Release 包名 `app.jmpic.jm_mobile`，Debug/Profile 包名 `app.jmpic.jm_mobile.debug`，账号和私有数据分开；Release 仍沿用现有开发签名，支持覆盖升级，正式发行密钥尚未配置。
-- 保留 0.15.0、0.16.0、0.17.0、0.18.0、0.18.1、0.19.0、0.20.0、0.20.1、0.20.2、0.21.0、0.22.0、0.23.0 的基线资料及当前版本的双 APK、源码快照和验证资料。更早的交付副本与重复截图已清理，历史说明归档到 `docs/history/`。
-- 保留的 APK 与 source.zip 对应当时交付；本轮工作区清理另记报告，不覆盖旧快照。0.17.0 的符号、R8 映射和体积分析数据继续保留。
-
-## 当前功能
-
-- 发现与搜索：首页分组、最近更新、分类/子分类、排行榜、连载与周刊；搜索排序、时间筛选、分页、编号直达及关联搜索。
-- 书架与历史：云端收藏夹和本地分组管理、筛选与批量操作、继续阅读、屏蔽规则。
-- 详情：详情/评论两个页签；简介和目录可折叠、目录支持列表/紧凑样式；统一选章下载入口。
-- 阅读：竖向连续滑动（新安装默认）、向右/向左翻页三种模式；中央点击切换阅读菜单、沉浸式阅读、缩放、进度恢复、跳页、自动阅读、预加载及磁盘缓存。继续阅读返回作品详情，首页按钮直接返回发现页。旧模式设置继续迁移。
-- 下载：选章或批量编号队列、并发限制、暂停/继续/取消/重试、重启恢复；本地库导入、离线阅读、搜索排序、批量缓存删除及 PDF 另存。
-- 账号：两源独立安全令牌存储、JM 系统浏览器注册入口、资料与签到、评论/回复/草稿、购买金额确认。应用内注册、找回密码和邮箱验证已退役。
-- 外观与维护：系统/浅/深主题、主题色、简中/繁中/英文、系统或设备开放字体、字体缩放与样式、响应式卡片密度；版本、许可与有界日志。
-
-## 使用与数据
-
-1. 在详情选章阅读，进度自动保留；云端功能需先登录。
-2. 下载默认每章生成 PDF，新增文件保存到系统 `Downloads/kamico/JM/作品名称_编号/章节名称_编号.pdf` 或 `Downloads/kamico/PIC/...`，调试版使用 `Downloads/kamico-debug/`。自选目录下同样按来源分目录，旧公共 PDF 不搬动。图片按阅读顺序、原比例、无边距排列，PDF 建议连续竖向布局，外部阅读器可覆盖显示方式。
-3. 应用内保留断点与离线缓存。删除缓存或卸载不会删除公共 PDF；旧图片下载仍可离线阅读，另存 PDF 时转换。Android 9 及以下首次保存公共 PDF 时需存储权限。
-4. 下载需要保持应用在前台；无后台服务、通知或自动唤醒。中断任务可在下次打开后恢复。
-5. 导入仅读取用户选择的目录，不移动或删除原文件。账号修改、签到、评论及购买由用户触发，购买显示金额并复核价格。
-6. 密码不落盘。GET 仅在连接异常、超时或 5xx 时换线，POST 不自动重放；配置的 API 域名视为可信，令牌可能随 GET 换线发送到其中任一个域名。修改连接配置会退出账号。
-
-## 开发与构建
-
-以下命令在客户端目录 `Kamico_android/` 中执行。工程版本以 `pubspec.yaml` 和构建配置为准。本机已有 Flutter 3.44.8 / Dart 3.12.2、Android SDK 36、JDK 21，以及缓存的 Gradle 依赖。
-
-使用现有依赖检查，不清缓存或升级依赖：
-
-```powershell
+```sh
 flutter analyze --no-pub
 flutter test --no-pub
+flutter build apk --release --no-pub --target-platform=android-arm64 -PjmAbi=arm64-v8a -Pdisable-abi-filtering=true
 ```
 
-需要交付新版本时调用打包脚本，默认生成同版本 Release 和 Debug；`-Mode debug` 只更新调试包，`-Mode release -AnalyzeSize` 单独生成体积分析构建。Dart 符号分离与体积分析为两次构建。
+Windows 批量打包：
 
 ```powershell
-$env:ANDROID_HOME = 'D:\Application\Android-SDK'
-$env:JAVA_HOME = 'C:\Users\12275\.jdks\temurin-21'
-$env:JM_USE_MAVEN_MIRROR = 'true' # 本机需要 Google Maven 镜像时设置
-.\tool\build_batch.ps1 -Version <新版本> -BuildNumber <递增编号>
+.\tool\build_distribution.ps1
 ```
 
-标准输出为 `build/app/outputs/flutter-apk/app-release.apk` 和 `app-debug.apk`。脚本限制单 ARM64，保留包外符号并归档源码；现有版本产物用于回退，不为文档清理重新打包。默认官方 Google Maven，镜像开关只影响构建依赖；Kotlin 增量编译关闭以规避 Windows 跨盘缓存异常。
+工具读取 `pubspec.yaml` 中的版本，生成 ARM64、ARMv7、x86_64、通用 APK 和 AAB，输出到本地 `releases/<版本>/distribution/`。Release 包名为 `app.jmpic.jm_mobile`；Debug/Profile 使用独立的 `app.jmpic.jm_mobile.debug`，可与正式版同时安装。
 
-清理时保留 `build/`、`.dart_tool/`、Gradle/Kotlin、SDK/Pub 等缓存、平台生成文件、锁文件和本地配置。首次搭建新机器的依赖安装属于环境准备，不属于本轮清理。
-
-## 目录与来源
-
-- `lib/domain/`、`lib/data/`、`lib/ui/`：模型、协议与存储、界面；`comic_source.dart` 定义共用能力，`jm_client.dart` / `pic_client.dart` 分别适配来源。
-- `android/`、`windows/`：原生能力桥接及平台工程。
-- `assets/i18n/`：语言词典；`third_party/`：第三方许可。
-- `test/`：有效功能回归与性能基准；`tool/`：构建、只读接口检查和图标生成工具。
-- `docs/history/`：已完成的早期计划、评审及验证记录，按需追溯，不作为现行规则。
-
-使用 Flutter ChangeNotifier 和显式依赖注入；手机不运行 Python/Qt。协议、图像恢复及许可证来源见 [第三方说明](THIRD_PARTY_NOTICES.md)和[迁移依据](docs/history/MIGRATION.md)。原始 Qt 工程未修改。超分、NAS、网络增强、桌面发行和更新发布源等范围见未完成事项。
-
-
-
-
+本地依赖缓存、构建输出和签名密钥不纳入仓库。来源与许可见 [第三方声明](THIRD_PARTY_NOTICES.md)。

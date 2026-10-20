@@ -1,13 +1,18 @@
 param(
     [Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
     [Parameter(Mandatory=$true)][int]$BuildNumber,
-    [string]$Baseline = '0.21.0'
+    [string]$Baseline = '0.21.0',
+    [string]$ExpectedSignerSha256 = 'c9c2e03d943cfa9a1f4ea7f2386075789db7ebb9ae360b035d337594cdcf78b2'
 )
 $ErrorActionPreference = 'Stop'
 $projectDirectory = Split-Path -Parent $PSScriptRoot
 $sdkTools = 'D:\Application\Android-SDK\build-tools\35.0.0'
-$baselineRecord = Get-Content -LiteralPath (Join-Path $projectDirectory "docs/artifacts-$Baseline.json") -Raw | ConvertFrom-Json
-$expectedSigner = ($baselineRecord | Where-Object mode -eq 'release').signer
+$baselinePath = Join-Path $projectDirectory "docs/artifacts-$Baseline.json"
+$expectedSigner = "Signer #1 certificate SHA-256 digest: $ExpectedSignerSha256"
+if (Test-Path -LiteralPath $baselinePath) {
+    $baselineRecord = Get-Content -LiteralPath $baselinePath -Raw | ConvertFrom-Json
+    $expectedSigner = ($baselineRecord | Where-Object mode -eq 'release').signer
+}
 $records = foreach ($buildMode in @('release', 'debug')) {
     $apkPath = Join-Path $projectDirectory "releases/$Version/app-arm64-$buildMode.apk"
     $badging = & (Join-Path $sdkTools 'aapt2.exe') dump badging $apkPath
@@ -40,5 +45,5 @@ $records = foreach ($buildMode in @('release', 'debug')) {
         signer = $signer
     }
 }
-$records | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $projectDirectory "docs/artifacts-$Version.json") -Encoding utf8
+$records | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $projectDirectory "releases/$Version/artifacts.json") -Encoding utf8
 $records | Select-Object mode,bytes,package,debuggable,sha256 | Format-List
