@@ -7,6 +7,14 @@
 - 1.0 的实现与交付保存为独立提交，并以 `v1.0.0` 标签标记，可通过提交或标签比较、追溯和回退。
 - 尚未配置 remote，未创建远程仓库或推送。用户确定托管平台和地址后，再连接名为 Kamico 的远程仓库。
 
+## 客户端目录
+
+2026-10-20 将客户端目录从 `jm_mobile/` 改为 `Kamico_android/`；仓库根目录与两份 Qt 参考工程的位置保持不变。构建脚本按自身路径定位工程，可继续从新目录运行。Dart 包名 `jm_mobile`、Android 包名 `app.jmpic.jm_mobile` 及其 Debug 身份、Kotlin 包目录和签名均沿用原值；这些标识独立于工作文件夹名称。
+
+目录整体迁移，包含已有编译缓存、依赖生成配置与全部历史产物；原 APK、源码 ZIP 和旧证据保持原内容，Git 仍只跟踪源码、配置及维护资料。历史记录中的旧目录名按原样保留。
+
+迁移后已在新目录完成验证：`flutter analyze --no-pub` 无问题，`flutter test --no-pub test/app_test.dart --reporter expanded` 两项合成回归通过，`android/gradlew.bat -p android help --offline --no-daemon` 配置成功。日志分别为 `verification-client-rename-analyze.log`、`verification-client-rename-app.log`、`verification-client-rename-gradle.log`，保留在本地 `docs/`，不纳入 Git。版本文件、依赖锁、1.0 双 APK 和源码 ZIP 的 SHA-256 均与迁移前一致；编译及依赖缓存目录原样保留。此次目录调整沿用原有 1.0.0+27 产物。
+
 ## 分支与验收流程
 
 2026-10-20 起按根 [AGENTS.md](../../AGENTS.md) 执行。已有提交与版本标签继续保留，不为采用新流程重写历史。

@@ -1,9 +1,10 @@
 # kamico 工作交接
 
-更新日期：2026-10-20。工作区 `D:\Projects\JMPicMerge`，客户端在 `jm_mobile/`。本轮已初始化 **Kamico 本地 Git**，`main` 分支，尚无远程地址，见 [REPOSITORY.md](REPOSITORY.md)。0.21.0 原交接完整保存在 [history/WORK_HANDOFF_0_21.md](history/WORK_HANDOFF_0_21.md)。
+更新日期：2026-10-20。工作区 `D:\Projects\JMPicMerge`，客户端在 `Kamico_android/`（原 `jm_mobile/`）。已建立 **Kamico 本地 Git**，主分支为 `main`；本轮目录迁移在 `feature+1.0.0` 分支，等待用户验收后合并，尚无远程地址，见 [REPOSITORY.md](REPOSITORY.md)。0.21.0 原交接完整保存在 [history/WORK_HANDOFF_0_21.md](history/WORK_HANDOFF_0_21.md)。
 
 ## 当前状态
 
+- 客户端目录已从 `jm_mobile/` 整体迁移为 `Kamico_android/`，现行文档与 Git 忽略路径已更新。源码实现、包名、签名、版本、锁文件、缓存与历史产物保留；新目录静态检查、两项合成回归和 Android 离线配置检查通过，见 [REPOSITORY.md](REPOSITORY.md)。目录迁移及 Git 流程规则保留在 `feature+1.0.0`，尚未合并 `main`。
 - 当前源码为正式版 **1.0.0+27**，已实现用户确认的详情排版、选择开关/浮动操作条、发现入口拖动排序及阅读菜单覆盖层，并精简关于信息及许可展示；实际交付状态见 [RELEASE_1_0.md](RELEASE_1_0.md)。
 - 已完成同版本双包、身份签名核验；静态检查无问题，147 项回归通过、1 项可选预览跳过，专项与预览 20 项通过。最终 ADB 无设备，代理未安装本版，尚未用户验收。Git 的 `v1.0.0` 指向本版提交，远程未配置。
 - **0.23.0 已由用户确认真机验收通过**，作为 Git 初始基线与 `baseline-0.23.0` 标签；原产物与 [UI_0_23.md](UI_0_23.md) 保留。

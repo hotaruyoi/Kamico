@@ -1,4 +1,4 @@
-# Original reference checkouts stay local; attribution is in jm_mobile/third_party.
+# Original reference checkouts stay local; attribution is in Kamico_android/third_party.
 /JMComic-qt-main/
 /picacg-qt-main/
 
@@ -11,9 +11,9 @@
 **/ephemeral/
 **/.plugin_symlinks/
 **/__pycache__/
-/jm_mobile/releases/
-/jm_mobile/docs/previews/
-/jm_mobile/tool/baseline15/
+/Kamico_android/releases/
+/Kamico_android/docs/previews/
+/Kamico_android/tool/baseline15/
 *.apk
 *.aab
 *.zip

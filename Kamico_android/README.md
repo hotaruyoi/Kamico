@@ -51,7 +51,7 @@
 
 ## 开发与构建
 
-工程版本以 `pubspec.yaml` 和构建配置为准。本机已有 Flutter 3.44.8 / Dart 3.12.2、Android SDK 36、JDK 21，以及缓存的 Gradle 依赖。
+以下命令在客户端目录 `Kamico_android/` 中执行。工程版本以 `pubspec.yaml` 和构建配置为准。本机已有 Flutter 3.44.8 / Dart 3.12.2、Android SDK 36、JDK 21，以及缓存的 Gradle 依赖。
 
 使用现有依赖检查，不清缓存或升级依赖：
 
