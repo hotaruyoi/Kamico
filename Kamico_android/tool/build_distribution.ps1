@@ -6,6 +6,8 @@ $version = [regex]::Match((Get-Content pubspec.yaml -Raw), '(?m)^version:\s*(\d+
 if (!$version) { throw 'Expected a semantic version with a build number in pubspec.yaml' }
 $outputDirectory = Join-Path $projectDirectory "releases/$version/distribution"
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+$logDirectory = Join-Path $projectDirectory "releases/$version/distribution-logs"
+New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
 $flutterExecutable = (Get-Command flutter -ErrorAction Stop).Source
 $symbols = Join-Path $projectDirectory "releases/$version/distribution-symbols"
 $targets = @(
@@ -24,12 +26,12 @@ foreach ($target in $targets) {
     }
     $arguments = @('build','apk','--release','--no-pub',"--target-platform=$($target.Platform)","--split-debug-info=$symbols",'-Pdisable-abi-filtering=true')
     if ($target.Name -ne 'universal') { $arguments += "-PjmAbi=$($target.Name)" }
-    & $flutterExecutable @arguments *> (Join-Path $outputDirectory "build-$($target.Name).log")
-    if ($LASTEXITCODE -ne 0) { Get-Content (Join-Path $outputDirectory "build-$($target.Name).log") -Tail 45; throw "APK build failed: $($target.Name)" }
+    & $flutterExecutable @arguments *> (Join-Path $logDirectory "build-$($target.Name).log")
+    if ($LASTEXITCODE -ne 0) { Get-Content (Join-Path $logDirectory "build-$($target.Name).log") -Tail 45; throw "APK build failed: $($target.Name)" }
     Copy-Item -LiteralPath 'build/app/outputs/flutter-apk/app-release.apk' -Destination $destination
     Write-Output "Built: $destination"
 }
-& $flutterExecutable build appbundle --release --no-pub --target-platform=android-arm,android-arm64,android-x64 "--split-debug-info=$symbols" *> (Join-Path $outputDirectory 'build-appbundle.log')
-if ($LASTEXITCODE -ne 0) { Get-Content (Join-Path $outputDirectory 'build-appbundle.log') -Tail 45; throw 'App Bundle build failed' }
+& $flutterExecutable build appbundle --release --no-pub --target-platform=android-arm,android-arm64,android-x64 "--split-debug-info=$symbols" *> (Join-Path $logDirectory 'build-appbundle.log')
+if ($LASTEXITCODE -ne 0) { Get-Content (Join-Path $logDirectory 'build-appbundle.log') -Tail 45; throw 'App Bundle build failed' }
 Copy-Item -LiteralPath 'build/app/outputs/bundle/release/app-release.aab' -Destination (Join-Path $outputDirectory "Kamico-$version-android.aab")
 Get-ChildItem -LiteralPath $outputDirectory -File | Where-Object Extension -in '.apk','.aab' | Get-FileHash -Algorithm SHA256

@@ -49,7 +49,7 @@ for architecture in [*machines, 'universal']:
     assert f"name='app.jmpic.jm_mobile' versionCode='{build}' versionName='{version}'" in badging
     assert "application-label:'kamico'" in badging
     assert 'application-debuggable' not in badging
-    assert "sdkVersion:'24'" in badging
+    assert re.search(r"^(?:minSdkVersion|sdkVersion):'24'$", badging, re.M)
     assert "targetSdkVersion:'36'" in badging
     expected = set(machines) if architecture == 'universal' else {architecture}
     check_native(path, 'lib', expected)
