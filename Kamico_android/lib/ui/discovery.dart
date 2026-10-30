@@ -794,7 +794,7 @@ class _SearchScreenState extends State<SearchScreen> {
             context,
             widget.session.isPic
                 ? '标题 / 作者 / 标签 / Pic ID'
-                : '标题 / 作者 / 标签 / JM123',
+                : '标题 / 作者 / 标签 / JM号',
           ),
           leading: IconButton(
             tooltip: AppTranslations.text(context, '搜索'),

@@ -9,6 +9,7 @@ import '../domain/models.dart';
 import 'jm_protocol.dart';
 import 'jm_client.dart';
 import 'comic_source.dart';
+import 'image_size.dart';
 
 class ImageRepository {
   ImageRepository(
@@ -21,9 +22,60 @@ class ImageRepository {
   final http.Client _http;
   final Future<Directory> Function() _temporaryDirectory;
   final _pending = <String, Future<Uint8List>>{};
+  final _aspects = <String, double>{};
+  /// Pages whose bytes were seen but whose header could not be parsed. They
+  /// must not keep an average placeholder, or the reader would crop them.
+  final _unmeasured = <String>{};
+  /// Bumped whenever a page's height/width ratio becomes known, so the reader
+  /// can reserve the page extent before its bitmap decodes.
+  final aspectRevision = ValueNotifier<int>(0);
   int _active = 0;
   Future<void> _maintenance = Future.value();
   final _waiting = <Completer<void>>[];
+
+  String _aspectKey(ReaderChapter chapter, int index) =>
+      '${chapter.source.id}:${chapter.id}:$index';
+
+  double? aspectFor(ReaderChapter chapter, int index) =>
+      _aspects[_aspectKey(chapter, index)];
+
+  /// Whether this page's bytes have been inspected, even if their header could
+  /// not be parsed. Such pages fall back to intrinsic height instead of an
+  /// average that could clip them.
+  bool measured(ReaderChapter chapter, int index) {
+    final key = _aspectKey(chapter, index);
+    return _aspects.containsKey(key) || _unmeasured.contains(key);
+  }
+
+  /// Average height/width ratio of the pages already seen in this chapter.
+  /// Unknown pages use it as a placeholder that is close to their real extent.
+  double averageAspect(ReaderChapter chapter) {
+    final prefix = '${chapter.source.id}:${chapter.id}:';
+    var total = 0.0, count = 0;
+    for (final entry in _aspects.entries) {
+      if (entry.key.startsWith(prefix)) {
+        total += entry.value;
+        count++;
+      }
+    }
+    return count == 0
+        ? defaultPageAspect
+        : clampPageAspect(total / count);
+  }
+
+  void _rememberAspect(ReaderChapter chapter, int index, Uint8List bytes) {
+    final key = _aspectKey(chapter, index);
+    final aspect = imageAspectFromBytes(bytes);
+    if (aspect == null) {
+      if (_unmeasured.add(key)) aspectRevision.value++;
+      return;
+    }
+    _unmeasured.remove(key);
+    final previous = _aspects[key];
+    if (previous != null && (previous - aspect).abs() < .001) return;
+    _aspects[key] = aspect;
+    aspectRevision.value++;
+  }
   Future<void> _acquire() async {
     if (_active < 3) {
       _active++;
@@ -73,7 +125,9 @@ class ImageRepository {
         final file = File('${cache.path}/$key.png');
         if (await file.exists()) {
           await file.setLastModified(DateTime.now());
-          return await file.readAsBytes();
+          final cached = await file.readAsBytes();
+          _rememberAspect(chapter, index, cached);
+          return cached;
         }
         final response = await _http
             .get(
@@ -102,6 +156,7 @@ class ImageRepository {
                 ),
               ));
         await file.writeAsBytes(result, flush: true);
+        _rememberAspect(chapter, index, result);
         _maintenance = _maintenance
             .then((_) => _trim(cache))
             .catchError((Object _) {});
