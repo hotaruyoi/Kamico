@@ -326,11 +326,12 @@ void main() {
     final time = find.text('2026-10-19 12:34'), user = find.text('示例用户');
     expect(tester.getCenter(time).dx, greaterThan(tester.getCenter(user).dx));
     expect(tester.getCenter(time).dy, closeTo(tester.getCenter(user).dy, 6));
+    // The body is plain text wrapped in a pointer listener rather than a
+    // SelectableText: the latter registers a 500ms long-press recogniser that
+    // wins the gesture arena and makes the comment list refuse to scroll when
+    // the finger starts on the text.
     expect(
-      tester
-          .widget<SelectableText>(find.byType(SelectableText))
-          .style!
-          .fontSize,
+      tester.widget<Text>(find.text('评论正文现在更容易阅读。')).style!.fontSize,
       17,
     );
     expect(tester.widget<Text>(time).style!.color, Colors.grey.shade600);
