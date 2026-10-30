@@ -20,15 +20,9 @@ Windows 批量打包（Release + Debug 双包）：
 .\tool\build_batch.ps1 -Version 1.0.2 -BuildNumber 32 -Mode both
 ```
 
-发行包（ARM64、x86_64、Universal 三个 Release APK，手动触发、参数可调）：
+发行包（ARM64、x86_64、Universal 三个 Release APK，手动触发、参数可调）用 `releases\build_release.ps1`。该脚本与 `releases/` 下的产物、日志一样不入仓库，只存在于本地：克隆仓库后该目录是空的，需要从本机备份取回（仓库不携带该脚本，也不携带 `docs/`）。
 
-```powershell
-.\releases\build_release.ps1 -Version 1.0.3 -BuildNumber 33
-.\releases\build_release.ps1 -Targets arm64-v8a
-.\releases\build_release.ps1 -Version 1.0.3 -BuildNumber 33 -SourceArchive
-```
-
-`releases\build_release.ps1` 按参数改写 `pubspec.yaml` 与 `lib/app_version.dart`，构建 `releases/<版本>/distribution/` 下的三个发行 APK，并用 `aapt2` / `apksigner` 校验包名、版本、标签、ABI、minSdk/targetSdk 与签名，输出 `distribution-verification.json` 与 `distribution-SHA256SUMS.txt`。`-NoVersionWrite` 只构建不改版本，`-SkipVerify` 跳过校验；构建日志、调试符号与校验记录留在待发布目录之外。
+脚本按参数改写 `pubspec.yaml` 与 `lib/app_version.dart`，构建 `releases/<版本>/distribution/` 下的三个发行 APK，并用 `aapt2` / `apksigner` 校验包名、版本、标签、ABI、minSdk/targetSdk 与签名，输出 `distribution-verification.json` 与 `distribution-SHA256SUMS.txt`。`-NoVersionWrite` 只构建不改版本，`-SkipVerify` 跳过校验；构建日志、调试符号与校验记录留在待发布目录之外。
 
 Release 包名为 `app.jmpic.jm_mobile`；Debug/Profile 使用独立的 `app.jmpic.jm_mobile.debug`，供本地调试，可与正式版同时安装。
 

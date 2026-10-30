@@ -19,9 +19,7 @@
 **/ephemeral/
 **/.plugin_symlinks/
 **/__pycache__/
-/Kamico_android/releases/*
-# Delivery artifacts stay local, but the release build script is source.
-!/Kamico_android/releases/build_release.ps1
+/Kamico_android/releases/
 /Kamico_android/tool/baseline15/
 *.apk
 *.aab
