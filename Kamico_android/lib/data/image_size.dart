@@ -14,6 +14,12 @@ double? imageAspectFromBytes(Uint8List bytes) {
   return size.height / size.width;
 }
 
+/// Placeholder ratio for pages whose extent is not known yet. It is close to a
+/// typical manga page and only used before the page's bytes arrive.
+const defaultPageAspect = 1.45;
+
+double clampPageAspect(double aspect) => aspect.clamp(0.4, 4.0).toDouble();
+
 ({int width, int height})? imageSizeFromBytes(Uint8List bytes) {
   if (bytes.length < 16) return null;
   final png = _pngSize(bytes);
@@ -38,9 +44,7 @@ double? _fileAspect(String path) {
     final length = file.lengthSync();
     if (length <= 0) return null;
     final read = file.readSync(math.min(length, 64 * 1024));
-    final size = imageSizeFromBytes(read);
-    if (size == null || size.width <= 0 || size.height <= 0) return null;
-    return size.height / size.width;
+    return imageAspectFromBytes(read);
   } catch (_) {
     return null;
   } finally {

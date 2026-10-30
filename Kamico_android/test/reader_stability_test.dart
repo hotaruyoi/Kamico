@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -100,7 +101,6 @@ void main() {
         tester.getSize(find.byType(Image).at(i)).height,
     ];
     final reserved = heights();
-    debugPrint('reserved on first frame: $reserved');
     expect(
       reserved.length,
       greaterThanOrEqualTo(2),
@@ -140,6 +140,71 @@ void main() {
     );
     await tester.pump();
     expect(heights(), reserved);
+
+    await tester.pumpWidget(const SizedBox());
+    session.dispose();
+  });
+
+  testWidgets('unmeasurable offline pages get no average placeholder', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+
+    final root = Directory.systemTemp.createTempSync('jm_reader_unknown_');
+    addTearDown(() {
+      try {
+        root.deleteSync(recursive: true);
+      } on FileSystemException {
+        // A decoder may still hold the test page; the temp directory is safe.
+      }
+    });
+    // A valid JPEG whose SOF sits beyond the 64 KB header window: Flutter can
+    // decode it, but the reader cannot measure it up front.
+    final jpeg = img.encodeJpg(img.Image(width: 200, height: 300));
+    final segment = Uint8List(65004)
+      ..[0] = 0xFF
+      ..[1] = 0xE1
+      ..[2] = 0xFD
+      ..[3] = 0xEA;
+    File('${root.path}/0.img').writeAsBytesSync(
+      Uint8List.fromList([
+        ...jpeg.sublist(0, 2),
+        ...segment,
+        ...segment,
+        ...jpeg.sublist(2),
+      ]),
+    );
+    SharedPreferences.setMockInitialValues({'reader_layout': 'vertical'});
+    final session = AppSession(
+      LocalStore(await SharedPreferences.getInstance()),
+      client: apiFor((_) => throw StateError('unexpected network')),
+    );
+    const comic = Comic(id: '2', title: 'Unknown header');
+    const chapter = Chapter(id: '20', title: 'Chapter');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ReaderScreen(
+          session: session,
+          comic: comic,
+          chapter: chapter,
+          offline: OfflineChapter(
+            comic: comic,
+            chapter: chapter,
+            folder: root.path,
+            count: 1,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final size = tester.getSize(find.byType(Image).first);
+    // A guessed average would reserve roughly width x 1.45 and crop the page.
+    // No height at all lets the decoded image size itself and stay complete.
+    expect(size.height, lessThan(size.width));
+    expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox());
     session.dispose();

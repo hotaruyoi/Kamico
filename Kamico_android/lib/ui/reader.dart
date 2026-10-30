@@ -271,24 +271,18 @@ class _ReaderScreenState extends State<ReaderScreen>
     }
   }
 
-  /// Average page extent used until a page's own header or bitmap is known.
-  double _fallbackAspect(ReaderChapter data) {
-    if (widget.offline != null) {
-      if (_offlineAspects.isEmpty) return 1.45;
-      var total = 0.0;
-      for (final aspect in _offlineAspects.values) {
-        total += aspect;
-      }
-      return (total / _offlineAspects.length).clamp(.4, 4.0);
-    }
-    return widget.session.images.averageAspect(data);
-  }
+  /// Average page extent used until an online page's own header arrives.
+  /// Offline pages are measured up front; unmeasurable ones keep their
+  /// intrinsic height rather than an average that could clip them.
+  double _fallbackAspect(ReaderChapter data) =>
+      widget.session.images.averageAspect(data);
 
-  double _pageAspect(ReaderChapter data, int index, double fallback) {
-    final exact = widget.offline != null
-        ? _offlineAspects[index]
-        : widget.session.images.aspectFor(data, index);
-    return exact ?? fallback;
+  double? _pageAspect(ReaderChapter data, int index, double fallback) {
+    if (widget.offline != null) return _offlineAspects[index];
+    final images = widget.session.images;
+    final exact = images.aspectFor(data, index);
+    if (exact != null) return exact;
+    return images.measured(data, index) ? null : fallback;
   }
 
   void _scrolled() {
@@ -551,12 +545,14 @@ class _ReaderScreenState extends State<ReaderScreen>
         // Reserve the final extent before the bitmap decodes. A page that grows
         // while it sits above the viewport would otherwise push the content
         // under the reader's finger (the vertical-scroll jitter regression).
-        // Do not replace this with the image's intrinsic height.
+        // Do not replace this with the image's intrinsic height when the aspect
+        // is known. Unmeasurable pages get no height at all: showing them is
+        // better than cropping them to a guessed extent.
         final aspect = _pageAspect(data, index, fallback);
         return SizedBox(
           key: _imageKeys.putIfAbsent(index, () => GlobalKey()),
           width: box.maxWidth,
-          height: box.maxWidth * aspect,
+          height: aspect == null ? null : box.maxWidth * aspect,
           // Keep the child structure stable when the exact aspect arrives;
           // clipping is a no-op once the reserved height matches the page.
           child: ClipRect(child: _image(index, width: true, zoom: false)),

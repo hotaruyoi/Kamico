@@ -23,6 +23,9 @@ class ImageRepository {
   final Future<Directory> Function() _temporaryDirectory;
   final _pending = <String, Future<Uint8List>>{};
   final _aspects = <String, double>{};
+  /// Pages whose bytes were seen but whose header could not be parsed. They
+  /// must not keep an average placeholder, or the reader would crop them.
+  final _unmeasured = <String>{};
   /// Bumped whenever a page's height/width ratio becomes known, so the reader
   /// can reserve the page extent before its bitmap decodes.
   final aspectRevision = ValueNotifier<int>(0);
@@ -36,6 +39,14 @@ class ImageRepository {
   double? aspectFor(ReaderChapter chapter, int index) =>
       _aspects[_aspectKey(chapter, index)];
 
+  /// Whether this page's bytes have been inspected, even if their header could
+  /// not be parsed. Such pages fall back to intrinsic height instead of an
+  /// average that could clip them.
+  bool measured(ReaderChapter chapter, int index) {
+    final key = _aspectKey(chapter, index);
+    return _aspects.containsKey(key) || _unmeasured.contains(key);
+  }
+
   /// Average height/width ratio of the pages already seen in this chapter.
   /// Unknown pages use it as a placeholder that is close to their real extent.
   double averageAspect(ReaderChapter chapter) {
@@ -47,13 +58,19 @@ class ImageRepository {
         count++;
       }
     }
-    return count == 0 ? 1.45 : (total / count).clamp(0.4, 4.0);
+    return count == 0
+        ? defaultPageAspect
+        : clampPageAspect(total / count);
   }
 
   void _rememberAspect(ReaderChapter chapter, int index, Uint8List bytes) {
-    final aspect = imageAspectFromBytes(bytes);
-    if (aspect == null || aspect <= 0) return;
     final key = _aspectKey(chapter, index);
+    final aspect = imageAspectFromBytes(bytes);
+    if (aspect == null) {
+      if (_unmeasured.add(key)) aspectRevision.value++;
+      return;
+    }
+    _unmeasured.remove(key);
     final previous = _aspects[key];
     if (previous != null && (previous - aspect).abs() < .001) return;
     _aspects[key] = aspect;
