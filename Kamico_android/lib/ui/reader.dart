@@ -8,10 +8,12 @@ import 'package:flutter/services.dart';
 import 'dialogs.dart';
 import 'failure.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../domain/models.dart';
 import '../domain/reader_options.dart';
 import '../data/download_repository.dart';
+import '../data/image_size.dart';
 import '../data/platform_files.dart';
 import 'app.dart';
 import 'reading_navigation.dart';
@@ -61,6 +63,8 @@ class _ReaderScreenState extends State<ReaderScreen>
   double _fraction = 0, _viewportHeight = 1;
   bool _restoring = false;
   final _imageKeys = <int, GlobalKey>{};
+  final _offlineAspects = <int, double>{};
+  bool _aspectUpdateScheduled = false;
   void _save() => widget.session.progress(
     ReadingProgress(
       comic: widget.comic,
@@ -94,6 +98,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       widget.session.store.preferences.getInt('reader_mode'),
     );
     _positions.itemPositions.addListener(_scrolled);
+    widget.session.images.aspectRevision.addListener(_aspectsChanged);
     _load();
     _knownChapters = widget.chapters;
     if (_knownChapters == null) _resolveChapters();
@@ -200,6 +205,19 @@ class _ReaderScreenState extends State<ReaderScreen>
   void _load() {
     final generation = ++_generation;
     final offline = widget.offline;
+    if (offline != null) {
+      // Local pages are measured from their headers before the first build, so
+      // the strip reserves every extent straight away instead of growing pages
+      // after their bitmaps decode.
+      _offlineAspects.clear();
+      final aspects = measurePageAspects([
+        for (var i = 0; i < offline.count; i++) offline.page(i).path,
+      ]);
+      for (var i = 0; i < aspects.length; i++) {
+        final aspect = aspects[i];
+        if (aspect != null && aspect > 0) _offlineAspects[i] = aspect;
+      }
+    }
     final future = offline == null
         ? widget.session.api.chapter(widget.chapter.id)
         : Future.value(
@@ -232,6 +250,45 @@ class _ReaderScreenState extends State<ReaderScreen>
 
     _pages = PageController(initialPage: _index);
     _scroll = ItemScrollController();
+  }
+
+  void _aspectsChanged() {
+    if (!mounted || _mode != ReaderMode.vertical || _aspectUpdateScheduled) {
+      return;
+    }
+    void update() {
+      _aspectUpdateScheduled = false;
+      if (mounted) setState(() {});
+    }
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      update();
+    } else {
+      _aspectUpdateScheduled = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) => update());
+    }
+  }
+
+  /// Average page extent used until a page's own header or bitmap is known.
+  double _fallbackAspect(ReaderChapter data) {
+    if (widget.offline != null) {
+      if (_offlineAspects.isEmpty) return 1.45;
+      var total = 0.0;
+      for (final aspect in _offlineAspects.values) {
+        total += aspect;
+      }
+      return (total / _offlineAspects.length).clamp(.4, 4.0);
+    }
+    return widget.session.images.averageAspect(data);
+  }
+
+  double _pageAspect(ReaderChapter data, int index, double fallback) {
+    final exact = widget.offline != null
+        ? _offlineAspects[index]
+        : widget.session.images.aspectFor(data, index);
+    return exact ?? fallback;
   }
 
   void _scrolled() {
@@ -448,6 +505,7 @@ class _ReaderScreenState extends State<ReaderScreen>
       widget.offline!.page(index),
       width: width ? double.infinity : null,
       fit: width ? BoxFit.fitWidth : BoxFit.contain,
+      alignment: width ? Alignment.topCenter : Alignment.center,
       gaplessPlayback: true,
       frameBuilder: (context, child, frame, synchronous) {
         if (frame != null) _decoded(index);
@@ -472,6 +530,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   Widget _continuous(BoxConstraints box, ReaderChapter data) {
     _viewportHeight = box.maxHeight;
     final vertical = _mode == ReaderMode.vertical;
+    final fallback = vertical ? _fallbackAspect(data) : 1.0;
     final list = ScrollablePositionedList.builder(
       key: ValueKey(_mode),
       padding: EdgeInsets.zero,
@@ -481,17 +540,28 @@ class _ReaderScreenState extends State<ReaderScreen>
       reverse: _mode.reversed,
       scrollDirection: vertical ? Axis.vertical : Axis.horizontal,
       itemCount: data.pages.length,
-      itemBuilder: (_, index) => vertical
-          ? SizedBox(
-              key: _imageKeys.putIfAbsent(index, () => GlobalKey()),
-              width: box.maxWidth,
-              child: _image(index, width: true, zoom: false),
-            )
-          : SizedBox(
-              width: box.maxWidth,
-              height: box.maxHeight,
-              child: _image(index),
-            ),
+      itemBuilder: (_, index) {
+        if (!vertical) {
+          return SizedBox(
+            width: box.maxWidth,
+            height: box.maxHeight,
+            child: _image(index),
+          );
+        }
+        // Reserve the final extent before the bitmap decodes. A page that grows
+        // while it sits above the viewport would otherwise push the content
+        // under the reader's finger (the vertical-scroll jitter regression).
+        // Do not replace this with the image's intrinsic height.
+        final aspect = _pageAspect(data, index, fallback);
+        return SizedBox(
+          key: _imageKeys.putIfAbsent(index, () => GlobalKey()),
+          width: box.maxWidth,
+          height: box.maxWidth * aspect,
+          // Keep the child structure stable when the exact aspect arrives;
+          // clipping is a no-op once the reserved height matches the page.
+          child: ClipRect(child: _image(index, width: true, zoom: false)),
+        );
+      },
     );
     // One transform keeps neighboring pages joined while zooming the vertical strip.
     return vertical
@@ -503,6 +573,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _positions.itemPositions.removeListener(_scrolled);
+    widget.session.images.aspectRevision.removeListener(_aspectsChanged);
     _timer?.cancel();
     _saveTimer?.cancel();
     if (_data?.pages.isNotEmpty == true && !_restoring && !_leavingChapter) {
@@ -822,6 +893,7 @@ class _ReaderImageState extends State<ReaderImage> {
         bytes,
         width: widget.fitWidth ? double.infinity : null,
         fit: widget.fitWidth ? BoxFit.fitWidth : BoxFit.contain,
+        alignment: widget.fitWidth ? Alignment.topCenter : Alignment.center,
         gaplessPlayback: true,
         frameBuilder: (context, child, frame, synchronous) {
           if (frame != null) widget.onDecoded?.call();

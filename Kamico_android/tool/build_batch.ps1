@@ -31,8 +31,19 @@ foreach ($buildMode in $buildModes) {
         if ($AnalyzeSize) { $buildArguments += @('--analyze-size',"--code-size-directory=$artifactDirectory/size-analysis") }
         else { $buildArguments += "--split-debug-info=$artifactDirectory/symbols" }
     }
-    & $flutterExecutable @buildArguments *> (Join-Path $artifactDirectory "build-$buildMode.log")
-    if ($LASTEXITCODE -ne 0) { Get-Content -LiteralPath (Join-Path $artifactDirectory "build-$buildMode.log") -Tail 60; throw "Android $buildMode build failed" }
+    $buildLog = Join-Path $artifactDirectory "build-$buildMode.log"
+    # flutter.bat writes its storage-mirror warning to stderr. PowerShell 5.1
+    # turns redirected native stderr into a terminating error under 'Stop', so
+    # relax the preference for this call and read the real exit code instead.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $flutterExecutable @buildArguments *> $buildLog
+        $buildExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+    if ($buildExitCode -ne 0) { Get-Content -LiteralPath $buildLog -Tail 60; throw "Android $buildMode build failed" }
     $artifact = Join-Path $artifactDirectory "app-arm64-$buildMode.apk"
     Copy-Item -LiteralPath "build/app/outputs/flutter-apk/app-$buildMode.apk" -Destination $artifact
     $artifacts += $artifact

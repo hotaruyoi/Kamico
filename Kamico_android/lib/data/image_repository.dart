@@ -9,6 +9,7 @@ import '../domain/models.dart';
 import 'jm_protocol.dart';
 import 'jm_client.dart';
 import 'comic_source.dart';
+import 'image_size.dart';
 
 class ImageRepository {
   ImageRepository(
@@ -21,9 +22,43 @@ class ImageRepository {
   final http.Client _http;
   final Future<Directory> Function() _temporaryDirectory;
   final _pending = <String, Future<Uint8List>>{};
+  final _aspects = <String, double>{};
+  /// Bumped whenever a page's height/width ratio becomes known, so the reader
+  /// can reserve the page extent before its bitmap decodes.
+  final aspectRevision = ValueNotifier<int>(0);
   int _active = 0;
   Future<void> _maintenance = Future.value();
   final _waiting = <Completer<void>>[];
+
+  String _aspectKey(ReaderChapter chapter, int index) =>
+      '${chapter.source.id}:${chapter.id}:$index';
+
+  double? aspectFor(ReaderChapter chapter, int index) =>
+      _aspects[_aspectKey(chapter, index)];
+
+  /// Average height/width ratio of the pages already seen in this chapter.
+  /// Unknown pages use it as a placeholder that is close to their real extent.
+  double averageAspect(ReaderChapter chapter) {
+    final prefix = '${chapter.source.id}:${chapter.id}:';
+    var total = 0.0, count = 0;
+    for (final entry in _aspects.entries) {
+      if (entry.key.startsWith(prefix)) {
+        total += entry.value;
+        count++;
+      }
+    }
+    return count == 0 ? 1.45 : (total / count).clamp(0.4, 4.0);
+  }
+
+  void _rememberAspect(ReaderChapter chapter, int index, Uint8List bytes) {
+    final aspect = imageAspectFromBytes(bytes);
+    if (aspect == null || aspect <= 0) return;
+    final key = _aspectKey(chapter, index);
+    final previous = _aspects[key];
+    if (previous != null && (previous - aspect).abs() < .001) return;
+    _aspects[key] = aspect;
+    aspectRevision.value++;
+  }
   Future<void> _acquire() async {
     if (_active < 3) {
       _active++;
@@ -73,7 +108,9 @@ class ImageRepository {
         final file = File('${cache.path}/$key.png');
         if (await file.exists()) {
           await file.setLastModified(DateTime.now());
-          return await file.readAsBytes();
+          final cached = await file.readAsBytes();
+          _rememberAspect(chapter, index, cached);
+          return cached;
         }
         final response = await _http
             .get(
@@ -102,6 +139,7 @@ class ImageRepository {
                 ),
               ));
         await file.writeAsBytes(result, flush: true);
+        _rememberAspect(chapter, index, result);
         _maintenance = _maintenance
             .then((_) => _trim(cache))
             .catchError((Object _) {});
