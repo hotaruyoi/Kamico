@@ -178,12 +178,21 @@ class SearchOptions {
     if (year.isNotEmpty) 'y': year,
     if (month.isNotEmpty) 'm': month,
   };
-  /// JM comic id: pure digits or an optional `JM` prefix, matched as the whole
-  /// input so ordinary keyword searches stay intact.
-  static String? directId(String input) => RegExp(
-    r'^(?:JM)?(\d+)$',
-    caseSensitive: false,
-  ).firstMatch(input.trim())?.group(1);
+  /// JM comic id: pure digits (ASCII or full-width) or an optional `JM` prefix,
+  /// matched as the whole input so ordinary keyword searches stay intact.
+  static String? directId(String input) {
+    final text = input.trim().replaceAllMapped(
+      RegExp(r'[０-９]'),
+      (match) => String.fromCharCode(match.group(0)!.codeUnitAt(0) - 0xFEE0),
+    );
+    final match = RegExp(
+      r'^(?:JM)?(\d+)$',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (match == null) return null;
+    // `007` and `7` are the same comic; the upstream does not zero-pad ids.
+    return match.group(1)!.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+  }
 }
 
 class ComicPage {

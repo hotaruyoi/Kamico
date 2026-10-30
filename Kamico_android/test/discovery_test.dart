@@ -132,14 +132,17 @@ void main() {
     () async {
       expect(SearchOptions.directId('123'), '123');
       expect(SearchOptions.directId(' 123456 '), '123456');
+      expect(SearchOptions.directId('00123'), '123');
       expect(SearchOptions.directId('jm123'), '123');
       expect(SearchOptions.directId('JM123'), '123');
+      expect(SearchOptions.directId('１２３'), '123');
+      expect(SearchOptions.directId('JM１２３'), '123');
       expect(SearchOptions.directId('abc123'), isNull);
       expect(SearchOptions.directId('123 title'), isNull);
       expect(SearchOptions.directId('abcJM123'), isNull);
       expect(SearchOptions.directId('JM123 title'), isNull);
       expect(SearchOptions.directId('12.3'), isNull);
-      expect(SearchOptions.directId('１２３'), isNull);
+      expect(SearchOptions.directId('１２３ title'), isNull);
       SharedPreferences.setMockInitialValues({});
       final store = LocalStore(await SharedPreferences.getInstance());
       await store.rememberSearch('A');
