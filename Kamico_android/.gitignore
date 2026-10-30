@@ -32,7 +32,9 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
-/releases/
+/releases/*
+# 发行构建脚本随仓库走，产物仍忽略
+!/releases/build_release.ps1
 
 # Symbolication related
 app.*.symbols

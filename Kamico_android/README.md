@@ -14,13 +14,21 @@ flutter test --no-pub
 flutter build apk --release --no-pub --target-platform=android-arm64 -PjmAbi=arm64-v8a -Pdisable-abi-filtering=true
 ```
 
-Windows 批量打包：
+Windows 批量打包（Release + Debug 双包）：
 
 ```powershell
-.\tool\build_distribution.ps1
+.\tool\build_batch.ps1 -Version 1.0.2 -BuildNumber 32 -Mode both
 ```
 
-工具读取 `pubspec.yaml` 中的版本，仅生成 ARM64、x86_64 和 Universal 三个 Release APK，输出到本地 `releases/<版本>/distribution/`。构建日志及校验记录保留在待发布目录之外。
+发行包（ARM64、x86_64、Universal 三个 Release APK，手动触发、参数可调）：
+
+```powershell
+.\releases\build_release.ps1 -Version 1.0.3 -BuildNumber 33
+.\releases\build_release.ps1 -Targets arm64-v8a
+.\releases\build_release.ps1 -Version 1.0.3 -BuildNumber 33 -SourceArchive
+```
+
+`releases\build_release.ps1` 按参数改写 `pubspec.yaml` 与 `lib/app_version.dart`，构建 `releases/<版本>/distribution/` 下的三个发行 APK，并用 `aapt2` / `apksigner` 校验包名、版本、标签、ABI、minSdk/targetSdk 与签名，输出 `distribution-verification.json` 与 `distribution-SHA256SUMS.txt`。`-NoVersionWrite` 只构建不改版本，`-SkipVerify` 跳过校验；构建日志、调试符号与校验记录留在待发布目录之外。
 
 Release 包名为 `app.jmpic.jm_mobile`；Debug/Profile 使用独立的 `app.jmpic.jm_mobile.debug`，供本地调试，可与正式版同时安装。
 
