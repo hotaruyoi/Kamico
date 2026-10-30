@@ -128,11 +128,18 @@ void main() {
     },
   );
   test(
-    'JM direct IDs are anchored and search history persists in most-recent order',
+    'JM direct IDs accept bare digits and an optional JM prefix, and history persists in most-recent order',
     () async {
-      expect(SearchOptions.directId(' jm123 '), '123');
+      expect(SearchOptions.directId('123'), '123');
+      expect(SearchOptions.directId(' 123456 '), '123456');
+      expect(SearchOptions.directId('jm123'), '123');
+      expect(SearchOptions.directId('JM123'), '123');
+      expect(SearchOptions.directId('abc123'), isNull);
+      expect(SearchOptions.directId('123 title'), isNull);
       expect(SearchOptions.directId('abcJM123'), isNull);
       expect(SearchOptions.directId('JM123 title'), isNull);
+      expect(SearchOptions.directId('12.3'), isNull);
+      expect(SearchOptions.directId('１２３'), isNull);
       SharedPreferences.setMockInitialValues({});
       final store = LocalStore(await SharedPreferences.getInstance());
       await store.rememberSearch('A');

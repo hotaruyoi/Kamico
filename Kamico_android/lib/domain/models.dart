@@ -178,8 +178,10 @@ class SearchOptions {
     if (year.isNotEmpty) 'y': year,
     if (month.isNotEmpty) 'm': month,
   };
+  /// JM comic id: pure digits or an optional `JM` prefix, matched as the whole
+  /// input so ordinary keyword searches stay intact.
   static String? directId(String input) => RegExp(
-    r'^JM(\d+)$',
+    r'^(?:JM)?(\d+)$',
     caseSensitive: false,
   ).firstMatch(input.trim())?.group(1);
 }
