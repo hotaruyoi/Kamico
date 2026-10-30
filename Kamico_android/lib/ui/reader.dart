@@ -65,6 +65,12 @@ class _ReaderScreenState extends State<ReaderScreen>
   final _imageKeys = <int, GlobalKey>{};
   final _offlineAspects = <int, double>{};
   bool _aspectUpdateScheduled = false;
+  // Chapter switching by over-pulling the first or last page. `_pull` is the
+  // fraction of the half-viewport drag that is needed; `_pullExtent` keeps the
+  // viewport size the fraction was measured against.
+  double _pull = 0, _pullExtent = 1;
+  int _pullDirection = 0;
+  bool _chapterSwitching = false;
   void _save() => widget.session.progress(
     ReadingProgress(
       comic: widget.comic,
@@ -311,7 +317,11 @@ class _ReaderScreenState extends State<ReaderScreen>
 
   void _changed(int index) {
     if (!mounted) return;
-    setState(() => _index = index);
+    setState(() {
+      _index = index;
+      _pull = 0;
+      _pullDirection = 0;
+    });
     _fraction = 0;
     _save();
     if (widget.offline == null && _data != null) {
@@ -521,6 +531,151 @@ class _ReaderScreenState extends State<ReaderScreen>
         : content;
   }
 
+  bool _chapterAvailable(int relative) {
+    final chapters = _knownChapters;
+    if (chapters == null) return false;
+    final at = chapters.indexWhere((c) => c.id == widget.chapter.id);
+    if (at < 0) return false;
+    final target = at + relative;
+    return target >= 0 && target < chapters.length;
+  }
+
+  // Dragging past the first or the last page starts the same gesture in all
+  // three modes: the ring fills with the distance the finger has travelled past
+  // half a viewport, and the chapter switches the moment it is full. The switch
+  // does not wait for the finger to lift, so the overlay must never be the only
+  // way to reach the next chapter.
+  bool _readerNotification(ScrollNotification notification) {
+    if (notification is ScrollEndNotification) {
+      if (_pull > 0 || _pullDirection != 0) {
+        setState(() {
+          _pull = 0;
+          _pullDirection = 0;
+        });
+      }
+      return false;
+    }
+    if (_chapterSwitching || _leavingChapter || _restoring) return false;
+    if ((_data?.pages.length ?? 0) == 0) return false;
+    final extent = notification.metrics.viewportDimension;
+    if (extent <= 0) return false;
+    // `overscroll` reports which end of the content the reader is past, which
+    // is what decides the chapter: past the end is the next one, past the
+    // start the previous one, in all three modes. It cannot be derived from
+    // `_index`, because the vertical strip only reports its first visible page
+    // and the last page is therefore never `_index`.
+    if (notification is OverscrollNotification) {
+      // A ballistic overscroll at the end of a fling must not advance on its
+      // own; only a finger drives the pull.
+      if (notification.dragDetails == null) return false;
+      final boundary = notification.overscroll > 0 ? 1 : -1;
+      if (_pullDirection == 0) {
+        if (!_chapterAvailable(boundary)) return false;
+        _pullDirection = boundary;
+      } else if (boundary != _pullDirection) {
+        return false;
+      }
+      _pullExtent = extent;
+      _commitPull(_pull + notification.overscroll.abs() / (extent * .5));
+      return false;
+    }
+    if (notification is ScrollUpdateNotification) {
+      // Dragging back inside the content gives the pull back, otherwise the
+      // ring would stay at its peak after a single overscroll.
+      if (_pullDirection == 0 || _pull <= 0) return false;
+      final delta = notification.scrollDelta ?? 0;
+      final recede = _pullDirection > 0 ? -delta : delta;
+      if (recede <= 0) return false;
+      _commitPull(_pull - recede / (extent * .5));
+      return false;
+    }
+    return false;
+  }
+
+  void _commitPull(double pulled) {
+    final ratio = pulled.clamp(0.0, 1.0);
+    if (ratio >= 1) {
+      final direction = _pullDirection;
+      _pull = 0;
+      _pullDirection = 0;
+      _chapterSwitching = true;
+      setState(() {});
+      unawaited(
+        _chapterAction(relative: direction).whenComplete(() {
+          if (mounted) setState(() => _chapterSwitching = false);
+        }),
+      );
+      return;
+    }
+    if (ratio <= 0) {
+      if (_pull > 0 || _pullDirection != 0) {
+        setState(() {
+          _pull = 0;
+          _pullDirection = 0;
+        });
+      }
+      return;
+    }
+    setState(() => _pull = ratio);
+  }
+
+  List<Widget> _chapterPull() {
+    if (_pull <= 0 || _pullDirection == 0) return const [];
+    final next = _pullDirection > 0;
+    final pulled = _pull * _pullExtent * .5;
+    final middle = pulled / 2;
+    return [
+      Positioned(
+        left: 0,
+        right: 0,
+        top: next ? null : 0,
+        bottom: next ? 0 : null,
+        height: pulled,
+        child: const IgnorePointer(
+          child: ColoredBox(
+            key: ValueKey('chapter-pull-blank'),
+            color: Colors.black,
+          ),
+        ),
+      ),
+      Positioned(
+        left: 0,
+        right: 0,
+        top: next ? null : middle - 22,
+        bottom: next ? middle - 22 : null,
+        child: Center(
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: CircularProgressIndicator(
+              key: const ValueKey('chapter-pull-ring'),
+              value: _pull,
+              strokeWidth: 3,
+              color: Colors.white,
+              backgroundColor: Colors.white24,
+            ),
+          ),
+        ),
+      ),
+      Positioned(
+        left: 0,
+        right: 0,
+        top: next ? null : middle + 30,
+        bottom: next ? middle + 30 : null,
+        child: Center(
+          child: AppText(
+            key: const ValueKey('chapter-pull-label'),
+            next ? '继续阅读下一章' : '继续阅读上一章',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .9),
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+
   Widget _continuous(BoxConstraints box, ReaderChapter data) {
     _viewportHeight = box.maxHeight;
     final vertical = _mode == ReaderMode.vertical;
@@ -587,6 +742,7 @@ class _ReaderScreenState extends State<ReaderScreen>
         fit: StackFit.expand,
         children: [
           content,
+          ..._chapterPull(),
           if (_chrome)
             Positioned(
               left: 0,
@@ -803,16 +959,19 @@ class _ReaderScreenState extends State<ReaderScreen>
                       );
                       if (center.contains(event.localPosition)) _toggleChrome();
                     },
-                    child: _mode.scrolling
-                        ? _continuous(box, data)
-                        : PageView.builder(
-                            key: ValueKey(_mode),
-                            controller: _pages,
-                            reverse: _mode.reversed,
-                            itemCount: data.pages.length,
-                            onPageChanged: _changed,
-                            itemBuilder: (_, page) => _image(page),
-                          ),
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: _readerNotification,
+                      child: _mode.scrolling
+                          ? _continuous(box, data)
+                          : PageView.builder(
+                              key: ValueKey(_mode),
+                              controller: _pages,
+                              reverse: _mode.reversed,
+                              itemCount: data.pages.length,
+                              onPageChanged: _changed,
+                              itemBuilder: (_, page) => _image(page),
+                            ),
+                    ),
                   ),
                 ),
                 controls: ListenableBuilder(
