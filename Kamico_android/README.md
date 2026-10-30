@@ -1,6 +1,6 @@
 # Kamico Android
 
-JMComic / PicACG 双源 Flutter 漫画客户端，当前版本 **1.0.1+29**。
+JMComic / PicACG 双源 Flutter 漫画客户端，当前版本 **1.0.2+32**。
 
 项目功能、阅读体验、安装包选择及使用说明见仓库根目录的 [README](../README.md)。发行文件位于 [GitHub Releases](https://github.com/hotaruyoi/Kamico/releases)。
 

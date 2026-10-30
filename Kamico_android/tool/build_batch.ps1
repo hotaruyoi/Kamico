@@ -8,10 +8,13 @@ $ErrorActionPreference = 'Stop'
 if ($AnalyzeSize -and $Mode -ne 'release') { throw 'AnalyzeSize requires -Mode release' }
 $projectDirectory = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectDirectory
+# Windows PowerShell 5.1 writes a UTF-8 BOM for -Encoding utf8, which pollutes
+# the tracked version files. Write UTF-8 without BOM explicitly instead.
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $manifest = Get-Content -LiteralPath 'pubspec.yaml' -Raw
 $manifest = [regex]::Replace($manifest, '(?m)^version:.*$', [System.Text.RegularExpressions.MatchEvaluator]{param($match) "version: ${Version}+${BuildNumber}"})
-Set-Content -LiteralPath 'pubspec.yaml' -Value $manifest.TrimEnd() -Encoding utf8
-Set-Content -LiteralPath 'lib/app_version.dart' -Value "const appVersion = '$Version';" -Encoding utf8
+[System.IO.File]::WriteAllText((Join-Path $projectDirectory 'pubspec.yaml'), $manifest.TrimEnd(), $utf8NoBom)
+[System.IO.File]::WriteAllText((Join-Path $projectDirectory 'lib/app_version.dart'), "const appVersion = '$Version';", $utf8NoBom)
 $localProperties = Get-Content -LiteralPath 'android/local.properties' -Raw
 $flutterExecutable = (Get-Command flutter -ErrorAction SilentlyContinue).Source
 if (!$flutterExecutable) {
@@ -20,7 +23,7 @@ if (!$flutterExecutable) {
 }
 $localProperties = [regex]::Replace($localProperties, '(?m)^flutter.versionName=.*$', [System.Text.RegularExpressions.MatchEvaluator]{param($match) "flutter.versionName=$Version"})
 $localProperties = [regex]::Replace($localProperties, '(?m)^flutter.versionCode=.*$', [System.Text.RegularExpressions.MatchEvaluator]{param($match) "flutter.versionCode=$BuildNumber"})
-Set-Content -LiteralPath 'android/local.properties' -Value $localProperties -Encoding utf8
+[System.IO.File]::WriteAllText((Join-Path $projectDirectory 'android/local.properties'), $localProperties, $utf8NoBom)
 $artifactDirectory = Join-Path $projectDirectory "releases/$Version"
 New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
 $buildModes = if ($Mode -eq 'both') { @('release', 'debug') } else { @($Mode) }
@@ -48,6 +51,6 @@ foreach ($buildMode in $buildModes) {
     Copy-Item -LiteralPath "build/app/outputs/flutter-apk/app-$buildMode.apk" -Destination $artifact
     $artifacts += $artifact
 }
-& tar -a -cf (Join-Path $artifactDirectory 'source.zip') --exclude=android/.gradle --exclude=android/.kotlin --exclude=android/app/.cxx --exclude=android/app/build --exclude=android/local.properties --exclude=android/key.properties --exclude=*.jks --exclude=*.keystore --exclude=tool/baseline15 --exclude=tool/__pycache__ lib test tool assets artwork android windows pubspec.yaml pubspec.lock README.md LICENSE THIRD_PARTY_NOTICES.md third_party
+& $env:SystemRoot\System32\tar.exe -a -cf (Join-Path $artifactDirectory 'source.zip') --exclude=android/.gradle --exclude=android/.kotlin --exclude=android/app/.cxx --exclude=android/app/build --exclude=android/local.properties --exclude=android/key.properties --exclude=*.jks --exclude=*.keystore --exclude=tool/baseline15 --exclude=tool/__pycache__ lib test tool assets artwork android windows pubspec.yaml pubspec.lock README.md LICENSE THIRD_PARTY_NOTICES.md third_party
 if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
 Get-FileHash -LiteralPath $artifacts -Algorithm SHA256

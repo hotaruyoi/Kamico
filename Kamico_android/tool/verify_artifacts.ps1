@@ -45,5 +45,5 @@ $records = foreach ($buildMode in @('release', 'debug')) {
         signer = $signer
     }
 }
-$records | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $projectDirectory "releases/$Version/artifacts.json") -Encoding utf8
+$records | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $projectDirectory "releases/$Version/artifacts.json")
 $records | Select-Object mode,bytes,package,debuggable,sha256 | Format-List
