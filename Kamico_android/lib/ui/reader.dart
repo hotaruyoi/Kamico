@@ -695,6 +695,24 @@ class _ReaderScreenState extends State<ReaderScreen>
     final hintShift = vertical
         ? Offset(0, away * (half + 30))
         : Offset(away * (half + 30), 0);
+    // On the horizontal axis a half-pulled band is narrower than the hint, so
+    // decorations are laid out inside the band instead of the whole viewport.
+    // Vertically the band is a full-width strip and the offsets above have
+    // room, so that axis keeps the previous geometry.
+    Widget inBand(Widget child) {
+      if (vertical) return child;
+      return SizedBox(
+        width: distance,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: anchor,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: child,
+          ),
+        ),
+      );
+    }
     final band = Positioned(
       left: vertical ? 0 : (atEnd ? null : 0),
       right: vertical ? 0 : (atEnd ? 0 : null),
@@ -735,32 +753,36 @@ class _ReaderScreenState extends State<ReaderScreen>
                 fit: StackFit.expand,
                 children: [
                   Transform.translate(
-                    offset: ringShift,
+                    offset: vertical ? ringShift : Offset.zero,
                     child: Align(
                       alignment: anchor,
-                      child: SizedBox(
-                        width: 44,
-                        height: 44,
-                        child: CircularProgressIndicator(
-                          key: const ValueKey('chapter-pull-ring'),
-                          value: pull.ratio,
-                          strokeWidth: 3,
-                          color: Colors.white,
-                          backgroundColor: Colors.white24,
+                      child: inBand(
+                        SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: CircularProgressIndicator(
+                            key: const ValueKey('chapter-pull-ring'),
+                            value: pull.ratio,
+                            strokeWidth: 3,
+                            color: Colors.white,
+                            backgroundColor: Colors.white24,
+                          ),
                         ),
                       ),
                     ),
                   ),
                   Transform.translate(
-                    offset: hintShift,
+                    offset: vertical ? hintShift : Offset.zero,
                     child: Align(
                       alignment: anchor,
-                      child: AppText(
-                        key: const ValueKey('chapter-pull-label'),
-                        pull.direction > 0 ? '继续阅读下一章' : '继续阅读上一章',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: .9),
-                          fontSize: 13,
+                      child: inBand(
+                        AppText(
+                          key: const ValueKey('chapter-pull-label'),
+                          pull.direction > 0 ? '继续阅读下一章' : '继续阅读上一章',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: .9),
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),

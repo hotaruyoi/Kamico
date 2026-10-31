@@ -350,6 +350,29 @@ void main() {
     await close(tester, session);
   });
 
+  testWidgets('the hint stays inside a narrow horizontal band', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final root = await pages(2);
+    final session = await sessionFor('pages');
+    await show(tester, session, root);
+
+    // Two frames leave a band narrower than the hint text. Centring the hint on
+    // the viewport would paint it on the page where it is invisible, so it has
+    // to be squeezed into the band instead.
+    final gesture = await pull(tester, const Offset(-30, 0), 2);
+    final band = bandRect(tester);
+    final text = tester.getRect(find.byKey(label));
+    expect(text.left, greaterThanOrEqualTo(band.left - 0.5));
+    expect(text.right, lessThanOrEqualTo(band.right + 0.5));
+    expect(text.width, lessThanOrEqualTo(band.width));
+    await gesture.up();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await close(tester, session);
+  });
+
   testWidgets('right-to-left paging opens the band on the left edge', (
     tester,
   ) async {
