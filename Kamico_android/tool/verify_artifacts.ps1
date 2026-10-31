@@ -6,7 +6,21 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $projectDirectory = Split-Path -Parent $PSScriptRoot
-$sdkTools = 'D:\Application\Android-SDK\build-tools\35.0.0'
+$sdkRoot = $env:ANDROID_HOME
+if (-not $sdkRoot) { $sdkRoot = $env:ANDROID_SDK_ROOT }
+if (-not $sdkRoot) {
+    $localProperties = Join-Path $projectDirectory 'android/local.properties'
+    if (Test-Path -LiteralPath $localProperties) {
+        $sdkLine = Get-Content -LiteralPath $localProperties | Where-Object { $_ -match '^sdk\.dir=' } | Select-Object -First 1
+        if ($sdkLine) { $sdkRoot = ($sdkLine -replace '^sdk\.dir=', '').Trim().Replace('\\', '\') }
+    }
+}
+if (-not $sdkRoot -or -not (Test-Path -LiteralPath $sdkRoot)) {
+    throw "Android SDK not found: set ANDROID_HOME or android/local.properties sdk.dir"
+}
+$sdkTools = Get-ChildItem -LiteralPath (Join-Path $sdkRoot 'build-tools') -Directory |
+    Sort-Object { [version]$_.Name } -Descending | Select-Object -First 1 -ExpandProperty FullName
+if (-not $sdkTools) { throw "build-tools directory is empty: $sdkRoot\build-tools" }
 $baselinePath = Join-Path $projectDirectory "docs/artifacts-$Baseline.json"
 $expectedSigner = "Signer #1 certificate SHA-256 digest: $ExpectedSignerSha256"
 if (Test-Path -LiteralPath $baselinePath) {
