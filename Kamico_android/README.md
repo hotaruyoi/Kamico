@@ -1,6 +1,6 @@
 # Kamico Android
 
-JMComic / PicACG 双源 Flutter 漫画客户端，当前版本 **1.0.2+32**。
+JMComic / PicACG 双源 Flutter 漫画客户端，当前版本 **1.0.3+37**。
 
 项目功能、阅读体验、安装包选择及使用说明见仓库根目录的 [README](../README.md)。发行文件位于 [GitHub Releases](https://github.com/hotaruyoi/Kamico/releases)。
 
@@ -17,7 +17,7 @@ flutter build apk --release --no-pub --target-platform=android-arm64 -PjmAbi=arm
 Windows 批量打包（Release + Debug 双包）：
 
 ```powershell
-.\tool\build_batch.ps1 -Version 1.0.2 -BuildNumber 32 -Mode both
+.\tool\build_batch.ps1 -Version 1.0.3 -BuildNumber 37 -Mode both
 ```
 
 发行包（ARM64、x86_64、Universal 三个 Release APK，手动触发、参数可调）用 `releases\build_release.ps1`。该脚本与 `releases/` 下的产物、日志一样不入仓库，只存在于本地：克隆仓库后该目录是空的，需要从本机备份取回（仓库不携带该脚本，也不携带 `docs/`）。
