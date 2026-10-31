@@ -350,7 +350,9 @@ void main() {
     await close(tester, session);
   });
 
-  testWidgets('the hint stays inside a narrow horizontal band', (tester) async {
+  testWidgets('the hint waits for room and then stays inside the band', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.625;
     addTearDown(tester.view.reset);
@@ -358,11 +360,22 @@ void main() {
     final session = await sessionFor('pages');
     await show(tester, session, root);
 
-    // Two frames leave a band narrower than the hint text. Centring the hint on
-    // the viewport would paint it on the page where it is invisible, so it has
-    // to be squeezed into the band instead.
+    // A narrow band is a full-height column. Painting the hint across it would
+    // spill white glyphs onto the white page, so the ring holds the column
+    // alone until there is room for the text.
     final gesture = await pull(tester, const Offset(-30, 0), 2);
-    final band = bandRect(tester);
+    var band = bandRect(tester);
+    final circle = tester.getRect(find.byKey(ring));
+    expect(circle.left, greaterThanOrEqualTo(band.left - 0.5));
+    expect(circle.right, lessThanOrEqualTo(band.right + 0.5));
+    expect(find.byKey(label), findsNothing);
+
+    // Once the column is wide enough the hint joins the ring, still inside it.
+    for (var i = 0; i < 2; i++) {
+      await gesture.moveBy(const Offset(-30, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    band = bandRect(tester);
     final text = tester.getRect(find.byKey(label));
     expect(text.left, greaterThanOrEqualTo(band.left - 0.5));
     expect(text.right, lessThanOrEqualTo(band.right + 0.5));
