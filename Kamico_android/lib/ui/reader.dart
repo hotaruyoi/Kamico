@@ -563,10 +563,10 @@ class _ReaderScreenState extends State<ReaderScreen>
   Axis get _pullAxis => _mode.scrolling ? Axis.vertical : Axis.horizontal;
 
   /// Share of the axis extent the finger must travel to fill the ring. The page
-  /// modes use a smaller share: a horizontal flick that covers a whole page is
-  /// the natural gesture there, so a half-width threshold would fire on
-  /// ordinary page turns.
-  double get _pullThreshold => _pullAxis == Axis.horizontal ? .35 : .5;
+  /// modes demand more than the vertical one: a horizontal drag is also how a
+  /// page turns, so a low threshold fired while the reader was still swiping
+  /// within the chapter.
+  double get _pullThreshold => _pullAxis == Axis.horizontal ? .75 : .5;
 
   /// Axis direction the page travels for a chapter direction. Both page modes
   /// mirror `ReaderMode.reversed`, so "next chapter" slides the page rightwards

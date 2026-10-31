@@ -265,6 +265,50 @@ void main() {
     return Offset.zero & size;
   }
 
+  testWidgets('a horizontal drag turns the page without filling the ring', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final root = await pages(3);
+    final session = await sessionFor('pages');
+    await show(tester, session, root, page: 2, count: 3);
+
+    // 300 of 411 logical pixels is 73% of the viewport: a long swipe that is
+    // still an ordinary page turn, so the ring must not be full.
+    final gesture = await pull(tester, const Offset(-30, 0), 10);
+    final value = ringValue(tester);
+    expect(value, isNotNull);
+    expect(value, lessThan(1));
+    await gesture.up();
+    await tester.pump();
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(tester.takeException(), isNull);
+    await close(tester, session);
+  });
+
+  testWidgets('a horizontal drag past 75% hands over to the next chapter', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final root = await pages(3);
+    final session = await sessionFor('pages');
+    await show(tester, session, root, page: 2, count: 3);
+
+    // 14 frames of 30px clear 75% of the 411px viewport.
+    final gesture = await pull(tester, const Offset(-30, 0), 14);
+    expect(ringValue(tester), isNull, reason: 'the ring resets on trigger');
+    await gesture.up();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await close(tester, session);
+  });
+
   testWidgets('the page follows the finger and the band opens behind it', (
     tester,
   ) async {
