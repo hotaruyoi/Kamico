@@ -247,6 +247,169 @@ void main() {
     await close(tester, session);
   });
 
+  Offset contentShift(WidgetTester tester) {
+    final found = find.byKey(const ValueKey('chapter-pull-content'));
+    final matrix = tester.widget<Transform>(found).transform;
+    return Offset(matrix.storage[12], matrix.storage[13]);
+  }
+
+  Rect bandRect(WidgetTester tester) {
+    return tester.getRect(find.byKey(blank));
+  }
+
+  /// The reader viewport in logical pixels. `getRect` on anything inside the
+  /// pull layer reports the shifted position, so the edges have to come from
+  /// the view itself.
+  Rect viewRect(WidgetTester tester) {
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    return Offset.zero & size;
+  }
+
+  testWidgets('the page follows the finger and the band opens behind it', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final root = await pages(2);
+    final session = await sessionFor('vertical');
+    await show(tester, session, root);
+
+    final before = contentShift(tester);
+    expect(before, Offset.zero);
+
+    final gesture = await pull(tester, const Offset(0, -30), 6);
+    final shift = contentShift(tester);
+    // The page travels upwards with the finger instead of staying put while a
+    // mask grows over it.
+    expect(shift.dy, lessThan(-40));
+    expect(shift.dx, 0);
+
+    // The vacated band sits at the bottom edge and grows with the pull, so it
+    // is never painted over a page.
+    final band = bandRect(tester);
+    expect(band.bottom, moreOrLessEquals(viewRect(tester).bottom, epsilon: 1));
+    expect(band.height, moreOrLessEquals(-shift.dy, epsilon: 1));
+
+    await gesture.up();
+    await tester.pump();
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(contentShift(tester), Offset.zero);
+    expect(tester.takeException(), isNull);
+    await close(tester, session);
+  });
+
+  testWidgets('pulling back retracts the band instead of leaving it painted', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final root = await pages(2);
+    final session = await sessionFor('vertical');
+    await show(tester, session, root);
+
+    final gesture = await pull(tester, const Offset(0, -30), 6);
+    final peak = -contentShift(tester).dy;
+    expect(peak, greaterThan(0));
+    for (var i = 0; i < 4; i++) {
+      await gesture.moveBy(const Offset(0, 30));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(-contentShift(tester).dy, lessThan(peak));
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.takeException(), isNull);
+    await close(tester, session);
+  });
+
+  testWidgets('left-to-right paging opens the band on the right edge', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final root = await pages(2);
+    final session = await sessionFor('pages');
+    await show(tester, session, root);
+
+    final gesture = await pull(tester, const Offset(-30, 0), 4);
+    final shift = contentShift(tester);
+    // The page slides left with the finger and the band opens on the right.
+    expect(shift.dx, lessThan(0));
+    expect(shift.dy, 0);
+    final band = bandRect(tester);
+    expect(band.right, moreOrLessEquals(viewRect(tester).right, epsilon: 1));
+    expect(band.width, moreOrLessEquals(-shift.dx, epsilon: 1));
+    await gesture.up();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await close(tester, session);
+  });
+
+  testWidgets('right-to-left paging opens the band on the left edge', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final root = await pages(2);
+    final session = await sessionFor('reversePages');
+    await show(tester, session, root);
+
+    final gesture = await pull(tester, const Offset(30, 0), 4);
+    final shift = contentShift(tester);
+    // "Next chapter" runs rightwards here, so the page moves right and the
+    // band that opens behind it is on the left. Deriving the side from the
+    // chapter direction alone would paint it on the wrong edge.
+    expect(shift.dx, greaterThan(0));
+    final band = bandRect(tester);
+    expect(band.left, moreOrLessEquals(viewRect(tester).left, epsilon: 1));
+    expect(band.width, moreOrLessEquals(shift.dx, epsilon: 1));
+    await gesture.up();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    await close(tester, session);
+  });
+
+  testWidgets('page extent is untouched while the pull is in flight', (
+    tester,
+  ) async {
+    // docs/BUG_READER_JITTER.md: a vertical page that changes extent after it
+    // is laid out shifts every page above it. The pull must be paint-only, so
+    // the laid out size has to stay identical to the resting one.
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.625;
+    addTearDown(tester.view.reset);
+    final root = await pages(3);
+    final session = await sessionFor('vertical');
+    await show(tester, session, root, page: 2, count: 3);
+
+    final content = find.byKey(const ValueKey('chapter-pull-content'));
+    final resting = tester.getSize(content);
+    final indexBefore = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position
+        .pixels;
+
+    final gesture = await pull(tester, const Offset(0, -30), 8);
+    expect(tester.getSize(content), resting);
+    final offsetDuring = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position
+        .pixels;
+    expect(offsetDuring, indexBefore);
+
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.takeException(), isNull);
+    await close(tester, session);
+  });
+
   testWidgets('nothing appears when the chapter has no neighbour', (
     tester,
   ) async {
