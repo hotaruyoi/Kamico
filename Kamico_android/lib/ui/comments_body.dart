@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'motion.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:html/parser.dart' as html;
 import '../domain/models.dart';
 import 'app.dart';
@@ -350,8 +353,13 @@ class _CommentThreadState extends State<_CommentThread> {
           ],
         ),
         const SizedBox(height: 8),
-        SelectableText(
-          html
+        // Plain Text instead of SelectableText: every selectable text widget
+        // registers a 500 ms long-press recognizer, and once it wins the gesture
+        // arena the enclosing list stops scrolling when you drag from the text.
+        // See docs/DECISIONS.md ("评论正文的长按复制").
+        _CopyOnLongPress(
+          text:
+              html
                   .parseFragment(
                     '${item['content'] ?? ''}'.replaceAll(
                       RegExp(r'<br\s*/?>', caseSensitive: false),
@@ -409,4 +417,86 @@ class _CommentThreadState extends State<_CommentThread> {
       ),
     );
   }
+}
+
+/// Long-press to copy that stays out of the gesture arena.
+///
+/// `SelectableText`, `SelectionArea` and `GestureDetector(onLongPress:)` all
+/// register a long-press recognizer. After [kLongPressTimeout] that recognizer
+/// wins the arena and the enclosing scroll view never receives the drag, so the
+/// list feels frozen when you press the text (measured: 280 px of scroll at a
+/// 400 ms hold, 0 px at 500 ms). A raw [Listener] sees pointer events without
+/// competing, which keeps both scrolling and long-press copy working.
+///
+/// Trade-off: this copies the whole comment instead of letting the user drag a
+/// partial selection. That is intentional — the copy target is a short comment,
+/// and partial selection is not worth breaking scrolling.
+class _CopyOnLongPress extends StatefulWidget {
+  const _CopyOnLongPress({required this.text, this.style});
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  State<_CopyOnLongPress> createState() => _CopyOnLongPressState();
+}
+
+class _CopyOnLongPressState extends State<_CopyOnLongPress> {
+  static const _hold = Duration(milliseconds: 500);
+
+  Timer? _timer;
+  Offset? _origin;
+  bool _fired = false;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _down(PointerDownEvent event) {
+    _origin = event.position;
+    _fired = false;
+    _timer?.cancel();
+    _timer = Timer(_hold, () {
+      if (!mounted) return;
+      _fired = true;
+      HapticFeedback.selectionClick();
+      _copy();
+    });
+  }
+
+  // Any movement past the touch slop means the user is scrolling, not copying.
+  void _move(PointerMoveEvent event) {
+    if (_fired) return;
+    final origin = _origin ?? event.position;
+    if ((event.position - origin).distance > kTouchSlop) _timer?.cancel();
+  }
+
+  void _up(PointerEvent _) {
+    _timer?.cancel();
+    _fired = false;
+  }
+
+  void _copy() {
+    final text = widget.text;
+    if (text.isEmpty) return;
+    Clipboard.setData(ClipboardData(text: text));
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(
+      const SnackBar(
+        content: AppText('已复制评论内容'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    onPointerDown: _down,
+    onPointerMove: _move,
+    onPointerUp: _up,
+    onPointerCancel: _up,
+    child: Text(widget.text, style: widget.style),
+  );
 }

@@ -44,7 +44,7 @@ class ReaderScreen extends StatefulWidget {
 }
 
 class _ReaderScreenState extends State<ReaderScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   late Future<ReaderChapter> _chapter;
   ReaderChapter? _data;
   PageController? _pages;
@@ -65,6 +65,18 @@ class _ReaderScreenState extends State<ReaderScreen>
   final _imageKeys = <int, GlobalKey>{};
   final _offlineAspects = <int, double>{};
   bool _aspectUpdateScheduled = false;
+  // Chapter switching by over-pulling the first or last page. `_pull` is the
+  // fraction of the threshold drag that is needed; `_pullExtent` keeps the
+  // viewport size the fraction was measured against. What is actually drawn
+  // lives in `_pullView`, not in `setState`: rebuilding the page area on every
+  // frame of a drag is what risks the 1.0.1 vertical jitter regression.
+  double _pull = 0, _pullExtent = 1;
+  int _pullDirection = 0;
+  bool _chapterSwitching = false;
+  final _pullView = ValueNotifier<_PullState>(_PullState.none);
+  final _zoom = TransformationController();
+  late final AnimationController _release;
+  double _releaseFrom = 0;
   void _save() => widget.session.progress(
     ReadingProgress(
       comic: widget.comic,
@@ -99,6 +111,13 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
     _positions.itemPositions.addListener(_scrolled);
     widget.session.images.aspectRevision.addListener(_aspectsChanged);
+    _release = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 160),
+    )..addListener(_releaseTick);
+    _release.addStatusListener((status) {
+      if (status == AnimationStatus.completed) _resetPull();
+    });
     _load();
     _knownChapters = widget.chapters;
     if (_knownChapters == null) _resolveChapters();
@@ -312,6 +331,7 @@ class _ReaderScreenState extends State<ReaderScreen>
   void _changed(int index) {
     if (!mounted) return;
     setState(() => _index = index);
+    _resetPull();
     _fraction = 0;
     _save();
     if (widget.offline == null && _data != null) {
@@ -521,6 +541,262 @@ class _ReaderScreenState extends State<ReaderScreen>
         : content;
   }
 
+  bool _chapterAvailable(int relative) {
+    final chapters = _knownChapters;
+    if (chapters == null) return false;
+    final at = chapters.indexWhere((c) => c.id == widget.chapter.id);
+    if (at < 0) return false;
+    final target = at + relative;
+    return target >= 0 && target < chapters.length;
+  }
+
+  // Dragging past the first or the last page starts the same gesture in all
+  // three modes: the ring fills with the distance the finger has travelled past
+  // the threshold, and the chapter switches the moment it is full. The switch
+  // does not wait for the finger to lift, so the overlay must never be the only
+  // way to reach the next chapter.
+  //
+  // The page itself follows the finger and the black band fills the space it
+  // vacates, so the band is never painted over a page. The page is moved with a
+  // Transform, which is paint-only: changing the page extents while a finger is
+  // down reproduces the 1.0.1 vertical jitter (docs/BUG_READER_JITTER.md).
+  Axis get _pullAxis => _mode.scrolling ? Axis.vertical : Axis.horizontal;
+
+  /// Share of the axis extent the finger must travel to fill the ring. The page
+  /// modes demand more than the vertical one: a horizontal drag is also how a
+  /// page turns, so a low threshold fired while the reader was still swiping
+  /// within the chapter.
+  double get _pullThreshold => _pullAxis == Axis.horizontal ? .75 : .5;
+
+  /// Axis direction the page travels for a chapter direction. Both page modes
+  /// mirror `ReaderMode.reversed`, so "next chapter" slides the page rightwards
+  /// in right-to-left paging and leftwards otherwise.
+  int get _pageMoveSign => _mode == ReaderMode.reversePages ? 1 : -1;
+
+  bool _readerNotification(ScrollNotification notification) {
+    if (notification is ScrollEndNotification) {
+      if (_pull > 0 || _pullDirection != 0) _startRelease();
+      return false;
+    }
+    if (_chapterSwitching || _leavingChapter || _restoring) return false;
+    if ((_data?.pages.length ?? 0) == 0) return false;
+    // While the strip is zoomed the drag belongs to InteractiveViewer; a pull
+    // there would move the page at the zoomed scale.
+    if (_mode.scrolling && _zoom.value.getMaxScaleOnAxis() > 1.01) return false;
+    final extent = notification.metrics.viewportDimension;
+    if (extent <= 0) return false;
+    // `overscroll` reports which end of the content the reader is past, which
+    // is what decides the chapter: past the end is the next one, past the
+    // start the previous one, in all three modes. It cannot be derived from
+    // `_index`, because the vertical strip only reports its first visible page
+    // and the last page is therefore never `_index`.
+    if (notification is OverscrollNotification) {
+      // A ballistic overscroll at the end of a fling must not advance on its
+      // own; only a finger drives the pull.
+      if (notification.dragDetails == null) return false;
+      final boundary = notification.overscroll > 0 ? 1 : -1;
+      if (_pullDirection == 0) {
+        if (!_chapterAvailable(boundary)) return false;
+        _pullDirection = boundary;
+      } else if (boundary != _pullDirection) {
+        return false;
+      }
+      _release.stop();
+      _pullExtent = extent;
+      _commitPull(
+          _pull + notification.overscroll.abs() / (extent * _pullThreshold));
+      return false;
+    }
+    if (notification is ScrollUpdateNotification) {
+      // Dragging back inside the content gives the pull back, otherwise the
+      // ring would stay at its peak after a single overscroll.
+      if (_pullDirection == 0 || _pull <= 0) return false;
+      final delta = notification.scrollDelta ?? 0;
+      final recede = _pullDirection > 0 ? -delta : delta;
+      if (recede <= 0) return false;
+      _commitPull(_pull - recede / (extent * _pullThreshold));
+      return false;
+    }
+    return false;
+  }
+
+  void _startRelease() {
+    _releaseFrom = _pull;
+    _release.forward(from: 0);
+  }
+
+  void _releaseTick() {
+    final left = 1 - Curves.easeOutCubic.transform(_release.value);
+    _setPull(_releaseFrom * left);
+  }
+
+  void _resetPull() {
+    if (_release.isAnimating) _release.stop();
+    _pull = 0;
+    _pullDirection = 0;
+    if (_pullView.value != _PullState.none) _pullView.value = _PullState.none;
+  }
+
+  void _setPull(double value) {
+    final ratio = value.clamp(0.0, 1.0);
+    _pull = ratio;
+    final next = ratio <= 0 || _pullDirection == 0
+        ? _PullState.none
+        : _PullState(
+            ratio: ratio,
+            direction: _pullDirection,
+            extent: _pullExtent,
+          );
+    if (_pullView.value != next) _pullView.value = next;
+  }
+
+  void _commitPull(double pulled) {
+    final ratio = pulled.clamp(0.0, 1.0);
+    if (ratio >= 1) {
+      final direction = _pullDirection;
+      _resetPull();
+      _chapterSwitching = true;
+      setState(() {});
+      unawaited(
+        _chapterAction(relative: direction).whenComplete(() {
+          if (mounted) setState(() => _chapterSwitching = false);
+        }),
+      );
+      return;
+    }
+    if (ratio <= 0) {
+      _resetPull();
+      return;
+    }
+    _setPull(ratio);
+  }
+
+  /// Paints one frame of the pull: the vacated band under the page, the page
+  /// shifted by the distance the finger has travelled, and the ring and hint
+  /// that sit inside the band.
+  Widget _chapterPullLayer(_PullState pull, Widget content) {
+    final active = pull.active;
+    final vertical = _pullAxis == Axis.vertical;
+    final distance = active ? pull.ratio * pull.extent * _pullThreshold : 0.0;
+    // -1 travels towards the start of the axis (up / left), +1 towards the end
+    // (down / right). The band always sits on the side the page just vacated.
+    final travel = active ? pull.direction * _pageMoveSign : 0;
+    final atEnd = travel < 0;
+    final half = distance / 2;
+    // Aligns the ring and the hint against the vacated edge, then shifts them
+    // towards the middle of the band.
+    final anchor = vertical
+        ? (atEnd ? Alignment.bottomCenter : Alignment.topCenter)
+        : (atEnd ? Alignment.centerRight : Alignment.centerLeft);
+    final away = atEnd ? -1.0 : 1.0;
+    final ringShift = vertical
+        ? Offset(0, away * (half - 22))
+        : Offset(away * (half - 22), 0);
+    final hintShift = vertical
+        ? Offset(0, away * (half + 30))
+        : Offset(away * (half + 30), 0);
+    // The horizontal band is a narrow full-height column. Sharing one box with
+    // the hint shrank the ring and made the two overlap, so on that axis they
+    // stack vertically inside the column and the hint only appears once the
+    // column is wide enough to hold it. The vertical band is a full-width
+    // strip and keeps the offsets above.
+    final circle = SizedBox(
+      width: 44,
+      height: 44,
+      child: CircularProgressIndicator(
+        key: const ValueKey('chapter-pull-ring'),
+        value: pull.ratio,
+        strokeWidth: 3,
+        color: Colors.white,
+        backgroundColor: Colors.white24,
+      ),
+    );
+    final hint = AppText(
+      key: const ValueKey('chapter-pull-label'),
+      pull.direction > 0 ? '继续阅读下一章' : '继续阅读上一章',
+      style: TextStyle(
+        color: Colors.white.withValues(alpha: .9),
+        fontSize: 13,
+      ),
+    );
+    final hintRoom = distance - 16;
+    final showHint = vertical || hintRoom >= 72;
+    final decorations = vertical
+        ? [
+            Transform.translate(
+              offset: ringShift,
+              child: Align(alignment: anchor, child: circle),
+            ),
+            Transform.translate(
+              offset: hintShift,
+              child: Align(alignment: anchor, child: hint),
+            ),
+          ]
+        : <Widget>[
+            Align(
+              alignment: anchor,
+              child: SizedBox(
+                width: distance,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    circle,
+                    if (showHint) const SizedBox(height: 6),
+                    if (showHint)
+                      SizedBox(
+                        width: hintRoom,
+                        child: FittedBox(fit: BoxFit.scaleDown, child: hint),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ];
+    final band = Positioned(
+      left: vertical ? 0 : (atEnd ? null : 0),
+      right: vertical ? 0 : (atEnd ? 0 : null),
+      top: vertical ? (atEnd ? null : 0) : 0,
+      bottom: vertical ? (atEnd ? 0 : null) : 0,
+      width: vertical ? null : distance,
+      height: vertical ? distance : null,
+      child: Offstage(
+        offstage: !active,
+        child: const IgnorePointer(
+          child: ColoredBox(
+            key: ValueKey('chapter-pull-blank'),
+            color: Colors.black,
+          ),
+        ),
+      ),
+    );
+    // The tree shape below never changes while a finger is down. Returning
+    // `content` on its own when idle and a Stack once the pull starts would
+    // re-create the scroll view's element, which drops the in-flight drag; so
+    // every frame keeps the same children and only their geometry moves.
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        band,
+        Transform.translate(
+          key: const ValueKey('chapter-pull-content'),
+          offset: vertical
+              ? Offset(0, travel * distance)
+              : Offset(travel * distance, 0),
+          child: content,
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Offstage(
+              offstage: !active,
+              child: Stack(fit: StackFit.expand, children: decorations),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _continuous(BoxConstraints box, ReaderChapter data) {
     _viewportHeight = box.maxHeight;
     final vertical = _mode == ReaderMode.vertical;
@@ -559,9 +835,15 @@ class _ReaderScreenState extends State<ReaderScreen>
         );
       },
     );
-    // One transform keeps neighboring pages joined while zooming the vertical strip.
+    // One transform keeps neighboring pages joined while zooming the vertical
+    // strip. The controller lets the pull gesture step aside while zoomed.
     return vertical
-        ? InteractiveViewer(minScale: 1, maxScale: 5, child: list)
+        ? InteractiveViewer(
+            minScale: 1,
+            maxScale: 5,
+            transformationController: _zoom,
+            child: list,
+          )
         : list;
   }
 
@@ -572,6 +854,9 @@ class _ReaderScreenState extends State<ReaderScreen>
     widget.session.images.aspectRevision.removeListener(_aspectsChanged);
     _timer?.cancel();
     _saveTimer?.cancel();
+    _release.dispose();
+    _pullView.dispose();
+    _zoom.dispose();
     if (_data?.pages.isNotEmpty == true && !_restoring && !_leavingChapter) {
       _save();
     }
@@ -586,7 +871,13 @@ class _ReaderScreenState extends State<ReaderScreen>
       Stack(
         fit: StackFit.expand,
         children: [
-          content,
+          // `content` is passed as the builder's child so a drag only repaints
+          // the page area instead of rebuilding the scrollable under the finger.
+          ValueListenableBuilder<_PullState>(
+            valueListenable: _pullView,
+            child: content,
+            builder: (_, pull, child) => _chapterPullLayer(pull, child!),
+          ),
           if (_chrome)
             Positioned(
               left: 0,
@@ -803,16 +1094,19 @@ class _ReaderScreenState extends State<ReaderScreen>
                       );
                       if (center.contains(event.localPosition)) _toggleChrome();
                     },
-                    child: _mode.scrolling
-                        ? _continuous(box, data)
-                        : PageView.builder(
-                            key: ValueKey(_mode),
-                            controller: _pages,
-                            reverse: _mode.reversed,
-                            itemCount: data.pages.length,
-                            onPageChanged: _changed,
-                            itemBuilder: (_, page) => _image(page),
-                          ),
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: _readerNotification,
+                      child: _mode.scrolling
+                          ? _continuous(box, data)
+                          : PageView.builder(
+                              key: ValueKey(_mode),
+                              controller: _pages,
+                              reverse: _mode.reversed,
+                              itemCount: data.pages.length,
+                              onPageChanged: _changed,
+                              itemBuilder: (_, page) => _image(page),
+                            ),
+                    ),
                   ),
                 ),
                 controls: ListenableBuilder(
@@ -829,6 +1123,35 @@ class _ReaderScreenState extends State<ReaderScreen>
       ),
     ),
   );
+}
+
+/// One frame of an in-progress chapter pull. Immutable so the page area can
+/// skip rebuilding while only the overlay changes.
+class _PullState {
+  const _PullState({this.ratio = 0, this.direction = 0, this.extent = 1});
+
+  /// Share of the threshold drag that has been travelled, 0..1.
+  final double ratio;
+
+  /// +1 towards the next chapter, -1 towards the previous one, 0 when idle.
+  final int direction;
+
+  /// Viewport extent along the reading axis the ratio was measured against.
+  final double extent;
+
+  bool get active => ratio > 0 && direction != 0;
+
+  static const none = _PullState();
+
+  @override
+  bool operator ==(Object other) =>
+      other is _PullState &&
+      other.ratio == ratio &&
+      other.direction == direction &&
+      other.extent == extent;
+
+  @override
+  int get hashCode => Object.hash(ratio, direction, extent);
 }
 
 class ReaderImage extends StatefulWidget {
