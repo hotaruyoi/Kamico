@@ -45,3 +45,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# AI 上色的模型权重与预编译推理库体积过大（模型 32MB、.so 56MB），
+# 不进仓库，按 docs/AICOLOR.md 的步骤重新生成或下载。
+/android/app/src/main/jniLibs/*/libonnxruntime.so
+/assets/models/*.ort

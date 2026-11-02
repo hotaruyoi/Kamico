@@ -39,6 +39,21 @@ class ImageRepository {
   double? aspectFor(ReaderChapter chapter, int index) =>
       _aspects[_aspectKey(chapter, index)];
 
+  /// Cache identity of one page: the source host plus the chapter and file
+  /// path, hashed. Shared with the AI color cache so the two stay in step when
+  /// a chapter is re-downloaded or the host changes.
+  String cacheKey(ReaderChapter chapter, int index) {
+    final page = chapter.pages[index];
+    final host = api.config.imageHost;
+    return md5
+        .convert(
+          utf8.encode(
+            '${chapter.source == ContentSource.pic ? 'pic:' : ''}$host:${chapter.id}:${chapter.scrambleId}:${page.path}',
+          ),
+        )
+        .toString();
+  }
+
   /// Whether this page's bytes have been inspected, even if their header could
   /// not be parsed. Such pages fall back to intrinsic height instead of an
   /// average that could clip them.
@@ -109,13 +124,7 @@ class ImageRepository {
   Future<Uint8List> load(ReaderChapter chapter, int index) {
     final page = chapter.pages[index];
     final host = api.config.imageHost;
-    final key = md5
-        .convert(
-          utf8.encode(
-            '${chapter.source == ContentSource.pic ? 'pic:' : ''}$host:${chapter.id}:${chapter.scrambleId}:${page.path}',
-          ),
-        )
-        .toString();
+    final key = cacheKey(chapter, index);
     return _pending.putIfAbsent(key, () async {
       await _acquire();
       try {

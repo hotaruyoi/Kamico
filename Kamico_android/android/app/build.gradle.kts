@@ -5,6 +5,11 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// -PjmChannel=beta 构建可与正式版并存的 beta 版本：
+// 独立 applicationId、独立桌面名称、独立下载目录。
+val jmChannel: String = providers.gradleProperty("jmChannel").orNull ?: ""
+val jmBeta: Boolean = jmChannel == "beta"
+
 android {
     namespace = "app.jmpic.jm_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -16,9 +21,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "app.jmpic.jm_mobile"
-        manifestPlaceholders["appLabel"] = "kamico"
+        applicationId = if (jmBeta) "app.jmpic.jm_mobile.beta" else "app.jmpic.jm_mobile"
+        manifestPlaceholders["appLabel"] = if (jmBeta) "kamico Beta" else "kamico"
         ndk {
             // Optional filter for a single-architecture local test package.
             providers.gradleProperty("jmAbi").orNull?.let {
@@ -32,13 +36,28 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        externalNativeBuild {
+            cmake {
+                // aicolor.c 是纯 C，不依赖 C++ 运行时；ONNX Runtime 自带静态链接。
+                arguments += listOf("-DANDROID_STL=none")
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     buildTypes {
         configureEach {
             if (name == "debug" || name == "profile") {
                 applicationIdSuffix = ".debug"
-                manifestPlaceholders["appLabel"] = "kamico Debug"
+                manifestPlaceholders["appLabel"] =
+                    if (jmBeta) "kamico Beta Debug" else "kamico Debug"
             }
         }
         release {

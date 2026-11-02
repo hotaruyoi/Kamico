@@ -9,6 +9,8 @@ import '../data/download_queue.dart';
 import '../data/system_fonts.dart';
 import 'downloads.dart';
 import '../data/image_repository.dart';
+import '../data/aicolor_repository.dart';
+import '../data/aicolor_engine.dart';
 import '../data/jm_client.dart';
 import '../data/local_store.dart';
 import '../domain/models.dart';
@@ -51,6 +53,14 @@ class AppSession extends ChangeNotifier {
                 tree: store.preferences.getString('export_tree'),
               ),
         );
+    aicolor = AIColorRepository(
+      (source) => forSource(source).images,
+      store,
+      loadChapter: (job) =>
+          forSource(job.comic.source).api.chapter(job.chapter.id),
+    )..setQuality(
+      AIColorQuality.fromName(store.preferences.getString('aicolor_quality')),
+    );
     queue = DownloadQueue(
       store: store,
       repository: downloads,
@@ -69,6 +79,7 @@ class AppSession extends ChangeNotifier {
     downloads = root.downloads;
     queue = root.queue;
     images = ImageRepository(api);
+    aicolor = root.aicolor;
     api.onUnauthorized = _expired;
     api.onRequest = (path, method, status, ms) =>
         logs.record('API', '$method $path', status: status, milliseconds: ms);
@@ -132,6 +143,7 @@ class AppSession extends ChangeNotifier {
   }
 
   late final ImageRepository images;
+  late final AIColorRepository aicolor;
   late final DownloadRepository downloads;
   late final DownloadQueue queue;
   final _downloadStates = <String, String>{};
@@ -151,13 +163,43 @@ class AppSession extends ChangeNotifier {
 
   Future<void> refreshOffline() async {
     try {
-      final entries = await downloads.list();
+      final entries = await offlineChapters();
       if (_disposed) return;
       rememberOffline(entries);
     } catch (_) {
       /* Storage errors are shown in the offline library. */
     }
   }
+
+  /// Every chapter readable without the network: the plain download library
+  /// plus the colorized library. A chapter that exists in both is shown once,
+  /// as the colorized copy, because that is the one the user asked for.
+  Future<List<OfflineChapter>> offlineChapters() async {
+    final plain = await downloads.list();
+    if (!aicolor.supported) return plain;
+    List<OfflineChapter> color;
+    try {
+      color = await aicolor.output.list();
+    } catch (_) {
+      // The colorized store lives outside the download root; if it cannot be
+      // read the plain library must still work.
+      return plain;
+    }
+    if (color.isEmpty) return plain;
+    final colorized = {
+      for (final entry in color) '${entry.comic.key}:${entry.chapter.id}': entry,
+    };
+    return [
+      for (final entry in plain)
+        if (!colorized.containsKey('${entry.comic.key}:${entry.chapter.id}'))
+          entry,
+      ...color,
+    ]..sort((a, b) => a.comic.title.compareTo(b.comic.title));
+  }
+
+  /// Routes library operations to the repository that actually owns [chapter].
+  DownloadRepository libraryOf(OfflineChapter chapter) =>
+      chapter.colorized ? aicolor.output : downloads;
 
   bool _disposed = false;
   bool authExpired = false;
@@ -225,6 +267,7 @@ class AppSession extends ChangeNotifier {
       other.api.token = await other.store.readToken();
       other.api.userProfile = other.store.readMap('profile');
       await queue.restore();
+      await aicolor.restore();
       unawaited(refreshOffline());
       unawaited(other.autoSign());
     }
@@ -362,6 +405,7 @@ class AppSession extends ChangeNotifier {
       _pic?.dispose();
       queue.removeListener(_downloadChanged);
       queue.dispose();
+      aicolor.dispose();
       logs.dispose();
     }
     api.close();

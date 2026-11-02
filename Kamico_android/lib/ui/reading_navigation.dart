@@ -20,7 +20,9 @@ Future<void> openChapter(
 }) async {
   session = session.forSource(comic.source);
   try {
-    final local = (await session.downloads.list())
+    // Downloads and the colorized library live in separate stores; the merged
+    // list is what makes an AI-colored chapter openable like any other.
+    final local = (await session.offlineChapters())
         .where(
           (entry) =>
               entry.comic.key == comic.key && entry.chapter.id == chapter.id,

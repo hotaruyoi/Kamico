@@ -17,12 +17,17 @@ class OfflineChapter {
     required this.folder,
     required this.count,
     this.pdfUri,
+    this.colorized = false,
   });
   final Comic comic;
   final Chapter chapter;
   final String folder;
   final int count;
   final String? pdfUri;
+
+  /// Set for chapters produced by AI colorization so the library can label
+  /// them and route deletion to the right store.
+  final bool colorized;
   File get pdf => File('$folder/chapter.pdf');
   File page(int index) => File('$folder/$index.img');
 }
@@ -31,11 +36,26 @@ class DownloadRepository {
   DownloadRepository({
     required this.fetchImage,
     Future<Directory> Function()? root,
+    this.folder = 'downloads',
+    this.colorized = false,
+    this.eagerPdf = true,
     this.publishPdf,
     this.publishSourcePdf,
   }) : _root = root ?? getApplicationSupportDirectory;
   final Future<Uint8List> Function(ReaderChapter, int) fetchImage;
   final Future<Directory> Function() _root;
+
+  /// Subdirectory of the app support folder that holds these chapters. The
+  /// colorized library uses its own so the two never mix.
+  final String folder;
+
+  /// Whether every chapter in [folder] came from AI colorization.
+  final bool colorized;
+
+  /// Whether a chapter's PDF is built as part of [save]. Colorizing skips it:
+  /// the pages matter first, and a lazily built PDF lets the queue move on to
+  /// the next chapter instead of spending a silent minute per chapter here.
+  final bool eagerPdf;
   final PdfPublisher? publishPdf;
   final Future<String?> Function(String, String, String, ContentSource)?
   publishSourcePdf;
@@ -53,7 +73,7 @@ class DownloadRepository {
 
   Future<Directory> _directory() async {
     final root = await _root();
-    return Directory('${root.path}/downloads').create(recursive: true);
+    return Directory('${root.path}/$folder').create(recursive: true);
   }
 
   Future<void> save(
@@ -62,6 +82,7 @@ class DownloadRepository {
     ReaderChapter reader,
     void Function(int, int) progress, {
     FutureOr<void> Function()? checkpoint,
+    bool colorized = false,
   }) async {
     if (reader.pages.isEmpty) throw const FormatException('章节没有可下载的图片');
     final root = await _directory();
@@ -83,15 +104,17 @@ class DownloadRepository {
     }
     await checkpoint?.call();
     final pdf = File('${folder.path}/chapter.pdf');
-    await writeChapterPdf(
-      pdf,
-      List.generate(reader.pages.length, (i) => File('${folder.path}/$i.img')),
-      checkpoint: () async {
-        await checkpoint?.call();
-      },
-    );
-    await checkpoint?.call();
-    final uri = publishSourcePdf != null
+    if (eagerPdf) {
+      await writeChapterPdf(
+        pdf,
+        List.generate(reader.pages.length, (i) => File('${folder.path}/$i.img')),
+        checkpoint: () async {
+          await checkpoint?.call();
+        },
+      );
+      await checkpoint?.call();
+    }
+    final uri = eagerPdf && publishSourcePdf != null
         ? await publishSourcePdf!(
             pdf.path,
             '${comic.title}_${comic.id}',
@@ -112,6 +135,7 @@ class DownloadRepository {
         'title': chapter.title,
         'count': reader.pages.length,
         'pdfUri': uri,
+        if (colorized || this.colorized) 'colorized': true,
       }),
       flush: true,
     );
@@ -207,6 +231,7 @@ class DownloadRepository {
             folder: folder.path,
             count: integer(data['count']),
             pdfUri: data['pdfUri'] as String?,
+            colorized: data['colorized'] == true || colorized,
           ),
         );
       } on FormatException {

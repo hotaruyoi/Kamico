@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import '../app_identity.dart';
-import '../app_version.dart';
 import '../data/app_licenses.dart';
 import 'design_system.dart';
 import 'translations.dart';
@@ -54,7 +53,7 @@ class _AppLicensesScreenState extends State<AppLicensesScreen> {
               if (index == 0) {
                 return const Padding(
                   padding: EdgeInsets.all(16),
-                  child: AppText('$appName $appVersion'),
+                  child: AppText('$appName $versionLabel'),
                 );
               }
               final name = names[index - 1];

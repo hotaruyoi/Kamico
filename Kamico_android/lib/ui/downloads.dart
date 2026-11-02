@@ -9,6 +9,7 @@ import '../app_identity.dart';
 import 'app.dart';
 import 'dialogs.dart';
 import '../data/download_queue.dart';
+import '../data/aicolor_repository.dart';
 import 'library_layout.dart';
 import 'reading_navigation.dart';
 import 'failure.dart';
@@ -50,6 +51,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
     super.initState();
     _library = widget.initialLibrary;
     widget.session.queue.addListener(_queueChanged);
+    widget.session.root.aicolor.addListener(_colorizeChanged);
     _reload();
   }
 
@@ -65,10 +67,22 @@ class _DownloadScreenState extends State<DownloadScreen> {
     if (mounted) setState(() {});
   }
 
+  int _colorized = 0;
+  void _colorizeChanged() {
+    final count = widget.session.root.aicolor.finished;
+    if (count != _colorized) {
+      _colorized = count;
+      _reload();
+    }
+    if (mounted) setState(() {});
+  }
+
   Future<void> _reload() async {
     try {
-      final chapters = await widget.session.downloads.list();
-      final bytes = await widget.session.downloads.bytes;
+      final chapters = await widget.session.offlineChapters();
+      final bytes =
+          await widget.session.downloads.bytes +
+          await _colorizedBytes();
       final info = await PlatformFiles.storageInfo();
       if (mounted) {
         setState(() {
@@ -85,6 +99,16 @@ class _DownloadScreenState extends State<DownloadScreen> {
           '${_operationStatus == null ? '' : '$_operationStatus；已成功导出的文件保留，可再次导出。\n'}$e',
         );
       }
+    }
+  }
+
+  /// Size of the colorized store, or zero when it cannot be read.
+  Future<int> _colorizedBytes() async {
+    if (!widget.session.root.aicolor.supported) return 0;
+    try {
+      return await widget.session.root.aicolor.output.bytes;
+    } catch (_) {
+      return 0;
     }
   }
 
@@ -176,7 +200,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
           'title_id' => '${chapter.comic.title}_${chapter.comic.id}',
           _ => '${chapter.comic.id}_${chapter.comic.title}',
         };
-        final pdf = await widget.session.downloads.ensurePdf(chapter);
+        final pdf = await widget.session.libraryOf(chapter).ensurePdf(chapter);
         await PlatformFiles.publishPdf(
           pdf.path,
           book,
@@ -300,6 +324,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
   @override
   void dispose() {
     widget.session.queue.removeListener(_queueChanged);
+    widget.session.root.aicolor.removeListener(_colorizeChanged);
     _scroll.dispose();
     _search.dispose();
     super.dispose();
@@ -361,7 +386,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
     if (!mounted) return;
     await _operation(() async {
       for (final chapter in selected) {
-        await widget.session.downloads.delete(chapter);
+        await widget.session.libraryOf(chapter).delete(chapter);
         widget.session.queue.remove(_key(chapter));
       }
       _selected.clear();
@@ -416,17 +441,32 @@ class _DownloadScreenState extends State<DownloadScreen> {
               ),
         )
         .toList();
+    // Colorizing runs on its own queue, so its tasks only show up here if they
+    // are folded in explicitly.
+    final colorJobs = session.root.aicolor.jobs.values
+        .where(
+          (j) =>
+              (_state == 'all' || j.state == _state) &&
+              '${j.comic.title} ${j.chapter.title}'.toLowerCase().contains(
+                _query.toLowerCase(),
+              ),
+        )
+        .toList();
     final offlineGroups = <String, List<OfflineChapter>>{};
     final jobGroups = <String, List<DownloadJob>>{};
+    final colorGroups = <String, List<AIColorJob>>{};
     for (final chapter in chapters) {
       (offlineGroups[chapter.comic.key] ??= []).add(chapter);
     }
     for (final job in jobs) {
       (jobGroups[job.comic.key] ??= []).add(job);
     }
+    for (final job in colorJobs) {
+      (colorGroups[job.comic.key] ??= []).add(job);
+    }
     final books = _library
         ? offlineGroups.keys.toList()
-        : jobGroups.keys.toList();
+        : {...jobGroups.keys, ...colorGroups.keys}.toList();
     if (_library) {
       books.sort(
         (a, b) =>
@@ -438,35 +478,58 @@ class _DownloadScreenState extends State<DownloadScreen> {
     }
     ContentSource sourceOf(String book) => _library
         ? offlineGroups[book]!.first.comic.source
-        : jobGroups[book]!.first.comic.source;
+        : (jobGroups[book] ?? const <DownloadJob>[]).isNotEmpty
+        ? jobGroups[book]!.first.comic.source
+        : colorGroups[book]!.first.comic.source;
     final order = {for (final (index, book) in books.indexed) book: index};
     books.sort((a, b) {
       final bySource = sourceOf(a).index.compareTo(sourceOf(b).index);
       return bySource == 0 ? order[a]!.compareTo(order[b]!) : bySource;
     });
-    final rows = <({String book, OfflineChapter? offline, DownloadJob? job})>[];
+    final rows = <({
+      String book,
+      OfflineChapter? offline,
+      DownloadJob? job,
+      AIColorJob? color,
+    })>[];
     ContentSource? previousSource;
     for (final book in books) {
       final source = sourceOf(book);
       if (source != previousSource) {
-        rows.add((book: '__source_${source.id}', offline: null, job: null));
+        rows.add((
+          book: '__source_${source.id}',
+          offline: null,
+          job: null,
+          color: null,
+        ));
         previousSource = source;
       }
-      rows.add((book: book, offline: null, job: null));
+      rows.add((book: book, offline: null, job: null, color: null));
       if (_expanded.contains('${_library ? 'offline' : 'jobs'}:$book')) {
         if (_library) {
           for (final chapter in offlineGroups[book]!) {
-            rows.add((book: book, offline: chapter, job: null));
+            rows.add((book: book, offline: chapter, job: null, color: null));
           }
         } else {
-          for (final job in jobGroups[book]!) {
-            rows.add((book: book, offline: null, job: job));
+          for (final job in jobGroups[book] ?? const <DownloadJob>[]) {
+            rows.add((book: book, offline: null, job: job, color: null));
+          }
+          for (final job in colorGroups[book] ?? const <AIColorJob>[]) {
+            rows.add((book: book, offline: null, job: null, color: job));
           }
         }
       }
     }
-    final running = queue.jobs.values.where((j) => j.state == 'running').length;
-    final waiting = queue.jobs.values.where((j) => j.state == 'queued').length;
+    final running =
+        queue.jobs.values.where((j) => j.state == 'running').length +
+        session.root.aicolor.jobs.values
+            .where((j) => j.state == 'running')
+            .length;
+    final waiting =
+        queue.jobs.values.where((j) => j.state == 'queued').length +
+        session.root.aicolor.jobs.values
+            .where((j) => j.state == 'queued')
+            .length;
     return LibrarySelectionLayout(
       bodyBuilder: (bottomInset) => LibraryScrollView(
         bottomInset: bottomInset,
@@ -489,7 +552,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       AppText(
                         _library
                             ? '${_chapters.map((c) => c.comic.key).toSet().length} 本 · ${_chapters.length} 章 · ${(_bytes / 1048576).toStringAsFixed(1)} MB'
-                            : '${queue.jobs.length} 章 · 进行中 $running · 等待 $waiting',
+                            : '${queue.jobs.length + session.root.aicolor.jobs.length} 章 · 进行中 $running · 等待 $waiting',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -601,6 +664,10 @@ class _DownloadScreenState extends State<DownloadScreen> {
                             for (final job in queue.jobs.values.toList()) {
                               queue.pause(job.id);
                             }
+                            for (final job
+                                in session.root.aicolor.jobs.values.toList()) {
+                              session.root.aicolor.pause(job.id);
+                            }
                           },
                     child: const AppText('全部暂停'),
                   ),
@@ -608,12 +675,21 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     onPressed:
                         !queue.jobs.values.any(
                           (j) => ['paused', 'failed'].contains(j.state),
+                        ) &&
+                        !session.root.aicolor.jobs.values.any(
+                          (j) => ['paused', 'failed'].contains(j.state),
                         )
                         ? null
                         : () {
                             for (final job in queue.jobs.values.toList()) {
                               if (['paused', 'failed'].contains(job.state)) {
                                 queue.resume(job.id);
+                              }
+                            }
+                            for (final job
+                                in session.root.aicolor.jobs.values.toList()) {
+                              if (['paused', 'failed'].contains(job.state)) {
+                                session.root.aicolor.resume(job.id);
                               }
                             }
                           },
@@ -668,7 +744,10 @@ class _DownloadScreenState extends State<DownloadScreen> {
                 itemCount: rows.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
-                  final row = rows[index], chapter = row.offline, job = row.job;
+                  final row = rows[index],
+                      chapter = row.offline,
+                      job = row.job,
+                      color = row.color;
                   if (row.book.startsWith('__source_')) {
                     return SourceSection(
                       ContentSource.parse(row.book.substring(9)),
@@ -679,7 +758,11 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       padding: const EdgeInsets.only(left: 20),
                       child: Card(
                         child: ListTile(
-                          leading: const Icon(Icons.menu_book_outlined),
+                          leading: Icon(
+                            chapter.colorized
+                                ? Icons.palette_outlined
+                                : Icons.menu_book_outlined,
+                          ),
                           trailing: _selecting
                               ? Checkbox(
                                   value: _selected.contains(_key(chapter)),
@@ -687,7 +770,11 @@ class _DownloadScreenState extends State<DownloadScreen> {
                                 )
                               : null,
                           title: Text(chapter.chapter.title),
-                          subtitle: AppText('${chapter.count} 页 · 离线可读'),
+                          subtitle: AppText(
+                            chapter.colorized
+                                ? '${chapter.count} 页 · AI 上色'
+                                : '${chapter.count} 页 · 离线可读',
+                          ),
                           onLongPress: () => setState(() {
                             _selecting = true;
                             _selected.add(_key(chapter));
@@ -761,13 +848,81 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       ),
                     );
                   }
+                  if (color != null) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.palette_outlined),
+                          title: Text(color.chapter.title),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppText(
+                                '${color.label} · ${color.done}/${color.total}${color.attempts > 0 ? ' · 重试 ${color.attempts}' : ''}',
+                              ),
+                              if (color.total > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: LinearProgressIndicator(
+                                    value: color.fraction,
+                                  ),
+                                ),
+                              if (color.error.isNotEmpty) AppText(color.error),
+                            ],
+                          ),
+                          trailing: AppActionMenu(
+                            actions: [
+                              if (color.state == 'queued')
+                                AppMenuAction(
+                                  '暂停',
+                                  Icons.pause,
+                                  () => session.root.aicolor.pause(color.id),
+                                ),
+                              if (['paused', 'failed', 'cancelled'].contains(
+                                color.state,
+                              ))
+                                AppMenuAction(
+                                  '继续 / 重试',
+                                  Icons.play_arrow,
+                                  () => session.root.aicolor.resume(color.id),
+                                ),
+                              if (color.state != 'done')
+                                AppMenuAction(
+                                  '取消任务',
+                                  Icons.cancel_outlined,
+                                  () => session.root.aicolor.cancel(color.id),
+                                ),
+                              AppMenuAction(
+                                '移除记录（保留图片）',
+                                Icons.playlist_remove,
+                                () => session.root.aicolor.remove(color.id),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
                   final local = offlineGroups[row.book];
-                  final tasks = jobGroups[row.book];
+                  final tasks = [
+                    ...?jobGroups[row.book],
+                    for (final job in colorGroups[row.book] ?? const <AIColorJob>[])
+                      DownloadJob(
+                        comic: job.comic,
+                        chapter: job.chapter,
+                        state: job.state,
+                        done: job.done,
+                        total: job.total,
+                        error: job.error,
+                        attempts: job.attempts,
+                      ),
+                  ];
                   final comic = _library
                       ? local!.first.comic
-                      : tasks!.first.comic;
-                  final total = tasks?.fold(0, (sum, j) => sum + j.total) ?? 0;
-                  final done = tasks?.fold(0, (sum, j) => sum + j.done) ?? 0;
+                      : tasks.first.comic;
+                  final total = tasks.fold(0, (sum, j) => sum + j.total);
+                  final done = tasks.fold(0, (sum, j) => sum + j.done);
                   final expanded = _expanded.contains(
                     '${_library ? 'offline' : 'jobs'}:${row.book}',
                   );
@@ -791,7 +946,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                         AppText(
                           _library
                               ? '${local!.length} 章已下载'
-                              : '${tasks!.where((j) => j.state == 'done').length}/${tasks.length} 章已完成',
+                              : '${tasks.where((j) => j.state == 'done').length}/${tasks.length} 章已完成',
                         ),
                         if (!_library)
                           Text(
@@ -803,7 +958,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                                 'paused',
                                 'cancelled',
                               ])
-                                if (tasks!.any((job) => job.state == state))
+                                if (tasks.any((job) => job.state == state))
                                   '${AppTranslations.text(context, jobLabels[state]!)} ${tasks.where((job) => job.state == state).length}',
                             ].join(' · '),
                             style: Theme.of(context).textTheme.labelSmall,

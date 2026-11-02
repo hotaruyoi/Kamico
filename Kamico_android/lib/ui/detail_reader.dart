@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import '../domain/models.dart';
+import 'aicolor_sheet.dart';
 import 'app.dart';
 import 'account.dart' show notice;
 import 'chapter_download_sheet.dart';
@@ -43,7 +44,10 @@ class _DetailScreenState extends State<DetailScreen>
   final _artwork = DetailArtwork();
   late final TabController _tabs;
   final _visited = <int>{0}, _downloaded = <String>{};
-  bool _favoriteBusy = false, _downloadBusy = false, _reversed = false;
+  bool _favoriteBusy = false,
+      _downloadBusy = false,
+      _colorizeBusy = false,
+      _reversed = false;
   String _chapterQuery = '';
   bool _chapterSearchOpen = false;
   final _chapterSearch = TextEditingController();
@@ -156,6 +160,29 @@ class _DetailScreenState extends State<DetailScreen>
       if (mounted) notice(context, error);
     } finally {
       if (mounted) setState(() => _downloadBusy = false);
+    }
+  }
+
+  /// Opens the colorization chapter picker. The work itself runs in the
+  /// background queue, so nothing here blocks on conversion.
+  Future<void> _colorize(ComicDetail detail) async {
+    if (_colorizeBusy) return;
+    if (!widget.session.root.aicolor.supported) {
+      notice(context, 'AI 上色目前只支持 Android');
+      return;
+    }
+    setState(() => _colorizeBusy = true);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        sheetAnimationStyle: AppMotion.sheet(context),
+        isScrollControlled: true,
+        builder: (_) => AIColorSheet(session: widget.session, detail: detail),
+      );
+    } catch (error) {
+      if (mounted) notice(context, error);
+    } finally {
+      if (mounted) setState(() => _colorizeBusy = false);
     }
   }
 
@@ -431,7 +458,7 @@ class _DetailScreenState extends State<DetailScreen>
                   final iconWidth = math.max(48.0, box.maxWidth * .15);
                   final readWidth = math.min(
                     box.maxWidth * .5,
-                    box.maxWidth - iconWidth * 2 - 16,
+                    box.maxWidth - iconWidth * 3 - 32,
                   );
                   return Row(
                     key: const ValueKey('detail-primary-actions'),
@@ -470,6 +497,19 @@ class _DetailScreenState extends State<DetailScreen>
                               ? null
                               : () => _download(detail),
                           icon: const Icon(Icons.download_outlined),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: iconWidth,
+                        height: 52,
+                        child: IconButton.filledTonal(
+                          key: const ValueKey('detail-colorize'),
+                          tooltip: 'AI 上色',
+                          onPressed: _colorizeBusy
+                              ? null
+                              : () => _colorize(detail),
+                          icon: const Icon(Icons.palette_outlined),
                         ),
                       ),
                       const SizedBox(width: 8),

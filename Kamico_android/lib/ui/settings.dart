@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../data/api_config.dart';
 import '../data/platform_files.dart';
 import '../data/site_links.dart';
-import '../app_version.dart';
 import '../app_identity.dart';
 import 'translations.dart';
 import 'app.dart';
@@ -216,6 +215,32 @@ class SettingsScreen extends StatelessWidget {
               ),
               const Divider(height: 1, indent: 56, endIndent: 16),
               ListTile(
+                leading: const Icon(Icons.palette_outlined),
+                title: const AppText('清除彩色书库'),
+                subtitle: FutureBuilder<int>(
+                  future: session.root.aicolor.cacheBytes(),
+                  builder: (context, snapshot) {
+                    final bytes = snapshot.data;
+                    final label = bytes == null
+                        ? '统计中…'
+                        : bytes <= 0
+                        ? '暂无已上色章节'
+                        : '当前 ${(bytes / 1048576).toStringAsFixed(1)} MB，与下载书库分开存放';
+                    return AppText(label);
+                  },
+                ),
+                onTap: () async {
+                  if (!await confirm(context, '清除全部 AI 上色章节？')) return;
+                  try {
+                    await session.root.aicolor.clearLibrary();
+                    if (context.mounted) notice(context, '彩色书库已清除');
+                  } catch (e) {
+                    if (context.mounted) notice(context, e);
+                  }
+                },
+              ),
+              const Divider(height: 1, indent: 56, endIndent: 16),
+              ListTile(
                 leading: const Icon(Icons.dns_outlined),
                 title: const AppText('连接设置'),
                 trailing: const Icon(Icons.chevron_right),
@@ -233,7 +258,7 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.article_outlined),
                 title: const AppText('版本信息与日志'),
-                subtitle: const AppText('$appName $appVersion'),
+                subtitle: const AppText('$appName $versionLabel'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () =>
                     _open(context, MaintenanceScreen(session: session)),

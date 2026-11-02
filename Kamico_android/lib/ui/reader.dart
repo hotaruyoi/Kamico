@@ -13,6 +13,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../domain/models.dart';
 import '../domain/reader_options.dart';
 import '../data/download_repository.dart';
+import '../data/aicolor_repository.dart';
 import '../data/image_size.dart';
 import '../data/platform_files.dart';
 import 'app.dart';
@@ -504,6 +505,74 @@ class _ReaderScreenState extends State<ReaderScreen>
     );
   }
 
+  /// Queues the current chapter for background colorization, which stores the
+  /// result in the colorized library. The reader itself never blocks on it and
+  /// keeps showing originals, so page turns stay instant.
+  Future<void> _colorize() async {
+    final data = _data;
+    final comic = widget.comic;
+    final aicolor = widget.session.root.aicolor;
+    if (data == null || data.pages.isEmpty) return;
+    if (!aicolor.supported) {
+      _toast('AI 上色目前只支持 Android');
+      return;
+    }
+    final id = '${comic.key}:${widget.chapter.id}';
+    final job = aicolor.jobs[id];
+    if (job != null && job.active) {
+      aicolor.cancel(id);
+      _toast('已取消本章上色');
+      return;
+    }
+    final result = await aicolor.enqueue(comic, [widget.chapter]);
+    if (!mounted) return;
+    _toast('${result.message}，完成后可在本地书库查看');
+  }
+
+  void _toast(String text) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(SnackBar(content: AppText(text)));
+  }
+
+  Widget _colorizeBar(BuildContext context, AIColorJob job) => Material(
+    color: Colors.black.withValues(alpha: .78),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppText(
+                  job.state == 'running'
+                      ? '上色中 ${job.done}/${job.total}'
+                      : '等待上色 · 队列 ${widget.session.root.aicolor.queued} 章',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: job.state == 'running' ? job.fraction : null,
+                    minHeight: 3,
+                    backgroundColor: Colors.white24,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: '取消本章上色',
+            onPressed: () => widget.session.root.aicolor.cancel(job.id),
+            icon: const Icon(Icons.close, color: Colors.white, size: 18),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Widget _image(int index, {bool width = false, bool zoom = true}) {
     if (widget.offline == null) {
       return ReaderImage(
@@ -882,6 +951,22 @@ class _ReaderScreenState extends State<ReaderScreen>
             Positioned(
               left: 0,
               right: 0,
+              top: 64 + MediaQuery.viewPaddingOf(context).top,
+              child: ListenableBuilder(
+                listenable: widget.session.root.aicolor,
+                builder: (context, _) {
+                  final job = widget.session.root.aicolor.current;
+                  if (job == null || job.state != 'running') {
+                    return const SizedBox.shrink();
+                  }
+                  return _colorizeBar(context, job);
+                },
+              ),
+            ),
+          if (_chrome)
+            Positioned(
+              left: 0,
+              right: 0,
               top: 0,
               child: SizedBox(
                 height: 64 + MediaQuery.viewPaddingOf(context).top,
@@ -910,6 +995,28 @@ class _ReaderScreenState extends State<ReaderScreen>
                     ],
                   ),
                   actions: [
+                    if (widget.offline == null)
+                      ListenableBuilder(
+                        listenable: widget.session.root.aicolor,
+                        builder: (context, _) {
+                          final job =
+                              widget.session.root.aicolor.jobs[
+                                  '${widget.comic.key}:${widget.chapter.id}'];
+                          final active = job?.active ?? false;
+                          return IconButton(
+                            tooltip: active ? '取消本章上色' : 'AI 上色本章',
+                            onPressed: _colorize,
+                            icon: Icon(
+                              active
+                                  ? Icons.auto_awesome
+                                  : Icons.auto_awesome_outlined,
+                              color: active
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                          );
+                        },
+                      ),
                     IconButton(
                       tooltip: AppTranslations.text(context, '章节列表'),
                       onPressed: () => _chapterAction(),
@@ -1223,8 +1330,10 @@ class _ReaderImageState extends State<ReaderImage> {
                 )
               : child;
         },
-        errorBuilder: (_, _, _) =>
-            const AppText('图片格式不受支持', style: TextStyle(color: Colors.white)),
+        errorBuilder: (_, _, _) => const AppText(
+          '图片格式不受支持',
+          style: TextStyle(color: Colors.white),
+        ),
       );
       final content = widget.fitWidth ? image : Center(child: image);
       return widget.zoom

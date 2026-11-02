@@ -1,7 +1,6 @@
 import 'filled_select.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../app_version.dart';
 import '../app_identity.dart';
 import '../domain/models.dart';
 import 'app.dart';
@@ -284,7 +283,7 @@ class _MaintenanceScreenState extends State<MaintenanceScreen> {
                     const Icon(Icons.menu_book_outlined, size: 40),
                     const SizedBox(height: 16),
                     AppText(
-                      '$appName $appVersion',
+                      '$appName $versionLabel',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                   ],

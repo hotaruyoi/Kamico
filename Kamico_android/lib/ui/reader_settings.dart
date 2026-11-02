@@ -2,6 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import '../domain/reader_options.dart';
 import 'app.dart';
+import '../data/aicolor_engine.dart';
 import 'design_system.dart';
 import 'filled_select.dart';
 import 'motion.dart';
@@ -33,6 +34,7 @@ class _ReaderSettingsPanelState extends State<ReaderSettingsPanel> {
   late double _prefetch = (prefs.getInt('reader_prefetch') ?? 2)
       .clamp(0, 3)
       .toDouble();
+  late AIColorQuality _quality = widget.session.root.aicolor.quality;
   SharedPreferences get prefs => widget.session.store.preferences;
   Widget _slider(
     String label,
@@ -164,6 +166,38 @@ class _ReaderSettingsPanelState extends State<ReaderSettingsPanel> {
                       ),
                     ),
                   ),
+                const SectionTitle('AI 上色'),
+                AppPanel(
+                  child: Column(
+                    children: [
+                      FilledSelect(
+                        key: const ValueKey('aicolor-quality'),
+                        label: '上色精度',
+                        value: _quality.name,
+                        minimumHeight: 88,
+                        leading: Icons.palette_outlined,
+                        valueStyle: Theme.of(context).textTheme.titleMedium,
+                        choices: {
+                          for (final q in AIColorQuality.values)
+                            q.name: '${q.label} · ${q.hint}',
+                        },
+                        onChanged: (v) async {
+                          final quality = AIColorQuality.fromName(v);
+                          setState(() => _quality = quality);
+                          widget.session.root.aicolor.setQuality(quality);
+                          await prefs.setString('aicolor_quality', v);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      const AppText(
+                        '在阅读器里点顶部调色板按钮后，本章从当前页开始逐页转换。'
+                        '转换期间继续显示原图，完成后自动替换；'
+                        '彩色图片单独缓存，可随时在设置里清除。',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
                 const SectionTitle('自动阅读与预加载'),
                 AppPanel(
                   child: Column(
