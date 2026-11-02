@@ -7,10 +7,12 @@ import 'package:html/parser.dart' as html;
 import '../domain/models.dart';
 import 'app.dart';
 import 'comment_editor.dart';
+import 'comment_filter_sheet.dart';
 import 'design_system.dart';
 import 'failure.dart';
 import 'settings.dart';
 import 'translations.dart';
+import '../data/comment_filter.dart';
 import '../data/pic_client.dart';
 
 /// Shared by an embedded detail tab and the standalone account comments route.
@@ -37,6 +39,23 @@ class _CommentsBodyState extends State<CommentsBody>
   int? _total;
   bool _loading = false, _more = true, _composing = false;
   Object? _error;
+  late CommentFilter _filter = CommentFilter.read(widget.session.store);
+
+  /// One pass keeps fetching until this many comments are visible, so a heavy
+  /// filter cannot strand the tab on an empty state after a single page.
+  static const int _fillTarget = 10;
+
+  /// Page budget for one pass; scanning is bounded so a pathological filter
+  /// cannot walk the whole thread on every refresh.
+  static const int _fillPages = 5;
+
+  /// True when the last pass ran out of budget while the upstream still had
+  /// more pages, so the caller can offer to keep looking.
+  bool _scanTruncated = false;
+
+  /// True when the filter dropped at least one page worth of comments, used to
+  /// explain the footer instead of claiming everything was shown.
+  bool _hidAny = false;
   @override
   bool get wantKeepAlive => true;
   @override
@@ -48,43 +67,67 @@ class _CommentsBodyState extends State<CommentsBody>
   Future<void> _load({bool reset = false}) async {
     if (!reset && (_loading || !_more)) return;
     final generation = ++_generation;
-    final page = reset ? 1 : _page + 1;
+    var page = reset ? 1 : _page + 1;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final data = await widget.session.api.comments(
-        widget.id,
-        page,
-        uid: widget.uid,
-      );
-      if (!mounted || generation != _generation) return;
-      final incoming = (data['list'] as List? ?? [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
-      setState(() {
-        if (reset) {
-          _items.clear();
-          _pageSize = incoming.length;
-        }
-        final ids = _items.map((e) => '${e['CID']}').toSet();
-        for (final item in incoming) {
-          if (item['CID'] == null || ids.add('${item['CID']}')) {
-            _items.add(item);
+      for (var scanned = 1; ; scanned++) {
+        final data = await widget.session.api.comments(
+          widget.id,
+          page,
+          uid: widget.uid,
+        );
+        if (!mounted || generation != _generation) return;
+        final incoming = (data['list'] as List? ?? [])
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        final visible = _filter.active
+            ? [
+                for (final item in incoming)
+                  if (!_filter.blocks('${item['content'] ?? ''}')) item,
+              ]
+            : incoming;
+        var more = false;
+        setState(() {
+          if (reset && page == 1) {
+            _items.clear();
+            _pageSize = incoming.length;
+            _hidAny = false;
           }
+          final ids = _items.map((e) => '${e['CID']}').toSet();
+          for (final item in visible) {
+            if (item['CID'] == null || ids.add('${item['CID']}')) {
+              _items.add(item);
+            }
+          }
+          if (incoming.isNotEmpty && visible.isEmpty) _hidAny = true;
+          _page = page;
+          _total = data['total'] == null ? null : integer(data['total']);
+          final flag = data['has_more'] ?? data['more'];
+          _more =
+              incoming.isNotEmpty &&
+              (flag != null
+                  ? flag == true || '$flag' == '1'
+                  : _total != null
+                  ? _pageSize > 0 && page * _pageSize < _total!
+                  : true);
+          more = _more;
+        });
+        // Stop when the upstream is exhausted, filtering is off, or enough
+        // comments are visible. A heavily filtered stretch keeps scanning
+        // inside the same pass, so one refresh still fills the screen.
+        if (!more || !_filter.active || _items.length >= _fillTarget) {
+          setState(() => _scanTruncated = false);
+          break;
         }
-        _page = page;
-        _total = data['total'] == null ? null : integer(data['total']);
-        final more = data['has_more'] ?? data['more'];
-        _more =
-            incoming.isNotEmpty &&
-            (more != null
-                ? more == true || '$more' == '1'
-                : _total != null
-                ? _pageSize > 0 && page * _pageSize < _total!
-                : true);
-      });
+        if (scanned >= _fillPages) {
+          setState(() => _scanTruncated = true);
+          break;
+        }
+        page++;
+      }
     } catch (error) {
       if (mounted && generation == _generation) setState(() => _error = error);
     } finally {
@@ -115,16 +158,45 @@ class _CommentsBodyState extends State<CommentsBody>
     }
   }
 
+  Future<void> _openFilter() async {
+    final result = await showModalBottomSheet<CommentFilter>(
+      context: context,
+      sheetAnimationStyle: AppMotion.sheet(context),
+      isScrollControlled: true,
+      builder: (_) => CommentFilterSheet(store: widget.session.store),
+    );
+    if (!mounted) return;
+    // The sheet saves as it goes, so a dismissed sheet (system back returns
+    // null) still leaves edits behind. Always re-read the store instead of
+    // trusting the pop result, otherwise the list keeps the stale rules.
+    final next = result ?? CommentFilter.read(widget.session.store);
+    setState(() => _filter = next);
+    await _load(reset: true);
+  }
+
+  /// Loads the next page once the reader pulls past the bottom of the list.
+  ///
+  /// A short list never produces a [ScrollUpdateNotification]: when the content
+  /// fits the viewport there is nothing left to scroll, so pulling up arrives as
+  /// an [OverscrollNotification] instead. Listening to updates alone stranded
+  /// the tab whenever filtering left only one or two visible comments, which is
+  /// exactly when the reader most wants the rest of the thread.
   bool _scrolled(ScrollNotification notification) {
-    if (notification.depth == 0 &&
-        notification is ScrollUpdateNotification &&
-        notification.metrics.axis == Axis.vertical &&
-        notification.scrollDelta != null &&
-        notification.scrollDelta! > 0 &&
-        notification.metrics.extentAfter < 280 &&
-        _error == null) {
-      _load();
+    if (notification.depth != 0 ||
+        notification.metrics.axis != Axis.vertical ||
+        notification.metrics.extentAfter >= 280 ||
+        _error != null) {
+      return false;
     }
+    final bool pulledUp;
+    if (notification is ScrollUpdateNotification) {
+      pulledUp = (notification.scrollDelta ?? 0) > 0;
+    } else if (notification is OverscrollNotification) {
+      pulledUp = notification.overscroll > 0;
+    } else {
+      pulledUp = false;
+    }
+    if (pulledUp) _load();
     return false;
   }
 
@@ -153,36 +225,53 @@ class _CommentsBodyState extends State<CommentsBody>
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 sliver: SliverToBoxAdapter(
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      AppText(
-                        _total == null ? '评论' : '评论 · $_total',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      if (widget.session.loggedIn && widget.id.isNotEmpty)
-                        FilledButton.tonalIcon(
-                          onPressed: _composing ? null : () => _compose(),
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const AppText('发表评论'),
-                        ),
-                      if (!widget.session.loggedIn)
-                        TextButton(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  LoginScreen(session: widget.session),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppText(
+                              _total == null ? '评论' : '评论 · $_total',
+                              style: Theme.of(context).textTheme.titleMedium,
                             ),
                           ),
-                          child: const AppText('登录后评论'),
-                        ),
-                      IconButton(
-                        tooltip: AppTranslations.text(context, '刷新评论'),
-                        onPressed: _loading ? null : () => _load(reset: true),
-                        icon: const Icon(Icons.refresh),
+                          IconButton(
+                            tooltip: AppTranslations.text(context, '刷新评论'),
+                            onPressed: _loading
+                                ? null
+                                : () => _load(reset: true),
+                            icon: const Icon(Icons.refresh),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (widget.session.loggedIn && widget.id.isNotEmpty)
+                            FilledButton.tonalIcon(
+                              onPressed: _composing ? null : () => _compose(),
+                              icon: const Icon(Icons.edit_outlined),
+                              label: const AppText('发表评论'),
+                            )
+                          else if (!widget.session.loggedIn)
+                            TextButton(
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      LoginScreen(session: widget.session),
+                                ),
+                              ),
+                              child: const AppText('登录后评论'),
+                            ),
+                          const Spacer(),
+                          if (widget.nested)
+                            _FilterButton(
+                              active: _filter.active,
+                              onPressed: _openFilter,
+                            ),
+                        ],
                       ),
                     ],
                   ),
@@ -201,6 +290,26 @@ class _CommentsBodyState extends State<CommentsBody>
                     retry: () => _load(reset: true),
                     session: widget.session,
                   ),
+                )
+              else if (_items.isEmpty && _filter.active)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _scanTruncated
+                      ? AppStatus(
+                          icon: Icons.filter_alt_off_outlined,
+                          title: '这一页都被筛选规则隐藏了',
+                          message: '继续查找会接着往后翻，直到找到可见的评论',
+                          action: FilledButton.tonalIcon(
+                            onPressed: _loading ? null : () => _load(),
+                            icon: const Icon(Icons.expand_more),
+                            label: const AppText('继续查找'),
+                          ),
+                        )
+                      : const AppStatus(
+                          icon: Icons.filter_alt_off_outlined,
+                          title: '已按筛选规则隐藏全部评论',
+                          message: '调整筛选规则后可以重新看到这些评论',
+                        ),
                 )
               else if (_items.isEmpty)
                 const SliverFillRemaining(
@@ -254,7 +363,11 @@ class _CommentsBodyState extends State<CommentsBody>
                               child: const AppText('加载更多评论'),
                             ),
                           )
-                        : const Center(child: AppText('已显示全部评论')),
+                        : Center(
+                            child: AppText(
+                              _hidAny ? '已按筛选规则隐藏部分评论' : '已显示全部评论',
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -498,5 +611,23 @@ class _CopyOnLongPressState extends State<_CopyOnLongPress> {
     onPointerUp: _up,
     onPointerCancel: _up,
     child: Text(widget.text, style: widget.style),
+  );
+}
+
+
+/// Two states, no width change: filled when rules are hiding comments.
+class _FilterButton extends StatelessWidget {
+  const _FilterButton({required this.active, required this.onPressed});
+  final bool active;
+  final VoidCallback onPressed;
+  @override
+  Widget build(BuildContext context) => FilledButton.tonalIcon(
+    onPressed: onPressed,
+    icon: Badge(
+      isLabelVisible: active,
+      smallSize: 8,
+      child: Icon(active ? Icons.filter_alt : Icons.filter_alt_outlined),
+    ),
+    label: const AppText('筛选'),
   );
 }
